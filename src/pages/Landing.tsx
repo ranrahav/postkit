@@ -128,7 +128,7 @@ const Landing = () => {
       {/* Footer */}
       <footer className="border-t py-8">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>© 2024 SlideMint. כל הזכויות שמורות.</p>
+          <p>© 2025 SlideMint. כל הזכויות שמורות.</p>
         </div>
       </footer>
     </div>;
