@@ -60,7 +60,7 @@ const Landing = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
+      <section className="container mx-auto px-4 text-center py-[50px]">
         <div className="max-w-3xl mx-auto space-y-6">
           <h2 className="text-5xl md:text-6xl font-bold leading-tight">
             הפוך כל טקסט לקרוסלת{" "}
@@ -79,7 +79,7 @@ const Landing = () => {
       </section>
 
       {/* Features Section */}
-      <section className="container px-4 py-20 mx-px">
+      <section className="container px-4 mx-[150px] py-[50px]">
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           <Card className="p-8 text-center space-y-4 hover:shadow-lg transition-shadow">
             <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center mx-auto">
@@ -114,7 +114,7 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
+      <section className="container mx-auto px-4 text-center py-[50px]">
         <Card className="max-w-2xl mx-auto p-12 bg-gradient-to-br from-primary/5 to-accent/5 border-2">
           <h3 className="text-3xl font-bold mb-4">מוכנים להתחיל?</h3>
           <p className="text-lg text-muted-foreground mb-6">
