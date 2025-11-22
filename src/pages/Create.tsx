@@ -1,0 +1,199 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, FileText } from "lucide-react";
+
+const Create = () => {
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+        fetchProfile(session.user.id);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+        fetchProfile(session.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+    
+    setProfile(data);
+  };
+
+  const handleGenerate = async () => {
+    if (!text.trim()) {
+      toast({
+        title: "שגיאה",
+        description: "נא להזין טקסט ליצירת קרוסלה",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (profile && profile.carousel_count >= 10) {
+      toast({
+        title: "הגעת למכסה החינמית",
+        description: "הגעת כמעט למכסה החינמית. בהמשך נוסיף תוכנית Pro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-slides", {
+        body: { text },
+      });
+
+      if (error) throw error;
+
+      const { data: carousel, error: insertError } = await supabase
+        .from("carousels")
+        .insert({
+          user_id: user.id,
+          original_text: text,
+          slides: data.slides,
+          chosen_template: "dark",
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      await supabase
+        .from("profiles")
+        .update({ carousel_count: (profile?.carousel_count || 0) + 1 })
+        .eq("id", user.id);
+
+      toast({
+        title: "הקרוסלה נוצרה בהצלחה!",
+        description: "מעביר אותך לעריכה...",
+      });
+
+      navigate(`/edit/${carousel.id}`);
+    } catch (error: any) {
+      console.error("Error generating carousel:", error);
+      toast({
+        title: "שגיאה",
+        description: "אירעה שגיאה ביצירת הקרוסלה, נסה שוב",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
+
+  return (
+    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-background to-muted">
+      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent">
+            SlideMint
+          </h1>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => navigate("/my-carousels")}>
+              הקרוסלות שלי
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("/")}>
+              דף הבית
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid md:grid-cols-2 gap-8 max-w-7xl mx-auto">
+          {/* Left side - Input */}
+          <Card className="p-6 space-y-4">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold">יצירת קרוסלה חדשה</h2>
+              <p className="text-muted-foreground">
+                הדבק את הטקסט שלך ותן לנו להפוך אותו לקרוסלה מקצועית
+              </p>
+            </div>
+
+            <Textarea
+              placeholder="הדבק כאן פוסט, מאמר או רעיון, בעברית או באנגלית..."
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              className="min-h-[400px] text-base resize-none"
+              disabled={loading}
+            />
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                {wordCount} מילים
+              </span>
+              {profile && (
+                <span className="text-sm text-muted-foreground">
+                  {profile.carousel_count}/10 קרוסלות
+                </span>
+              )}
+            </div>
+
+            <Button
+              onClick={handleGenerate}
+              disabled={loading || !text.trim()}
+              className="w-full"
+              size="lg"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="ml-2 h-5 w-5 animate-spin" />
+                  יוצר קרוסלה...
+                </>
+              ) : (
+                "צור מבנה שקופיות"
+              )}
+            </Button>
+          </Card>
+
+          {/* Right side - Preview placeholder */}
+          <Card className="p-6 flex items-center justify-center bg-muted/30">
+            <div className="text-center space-y-4 max-w-md">
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                <FileText className="w-10 h-10 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold">תצוגה מקדימה</h3>
+              <p className="text-muted-foreground">
+                כאן תופיע תצוגה מקדימה של השקופיות אחרי יצירה
+              </p>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Create;
