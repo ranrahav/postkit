@@ -10,6 +10,7 @@ import { Loader2, FileText } from "lucide-react";
 const Create = () => {
   const [text, setText] = useState("");
   const [style, setStyle] = useState("Professional");
+  const [coverStyle, setCoverStyle] = useState("minimalist");
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -90,6 +91,7 @@ const Create = () => {
           original_text: text,
           slides: data.slides,
           chosen_template: "dark",
+          cover_style: coverStyle,
         })
         .select()
         .single();
@@ -162,6 +164,20 @@ const Create = () => {
                 <option value="Storytelling">סיפורי</option>
                 <option value="Educational">חינוכי</option>
                 <option value="List / Tips">רשימה / טיפים</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">סגנון עטיפה</label>
+              <select
+                value={coverStyle}
+                onChange={(e) => setCoverStyle(e.target.value)}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                disabled={loading}
+              >
+                <option value="minimalist">מינימליסטי (טקסט בלבד)</option>
+                <option value="big_number">מספר גדול + כותרת</option>
+                <option value="accent_block">בלוק צבעוני + כותרת</option>
               </select>
             </div>
 

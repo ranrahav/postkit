@@ -22,6 +22,7 @@ const EditCarousel = () => {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(0);
   const [template, setTemplate] = useState<"dark" | "light">("dark");
+  const [coverStyle, setCoverStyle] = useState<"minimalist" | "big_number" | "accent_block">("minimalist");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const navigate = useNavigate();
@@ -52,6 +53,7 @@ const EditCarousel = () => {
       const parsedSlides = typeof data.slides === 'string' ? JSON.parse(data.slides) : data.slides;
       setSlides(parsedSlides as Slide[]);
       setTemplate(data.chosen_template as "dark" | "light");
+      setCoverStyle((data.cover_style || "minimalist") as "minimalist" | "big_number" | "accent_block");
     } catch (error) {
       console.error("Error fetching carousel:", error);
       toast({
@@ -72,6 +74,7 @@ const EditCarousel = () => {
         .update({
           slides: slides as any,
           chosen_template: template,
+          cover_style: coverStyle,
         })
         .eq("id", id);
 
@@ -224,6 +227,16 @@ const EditCarousel = () => {
                 <SelectItem value="light">תבנית בהירה</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={coverStyle} onValueChange={(value) => setCoverStyle(value as "minimalist" | "big_number" | "accent_block")}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="minimalist">מינימליסטי</SelectItem>
+                <SelectItem value="big_number">מספר גדול</SelectItem>
+                <SelectItem value="accent_block">בלוק צבעוני</SelectItem>
+              </SelectContent>
+            </Select>
             <Button onClick={handleSave} variant="outline">
               שמור
             </Button>
@@ -301,6 +314,7 @@ const EditCarousel = () => {
                 template={template}
                 slideNumber={selectedSlideIndex + 1}
                 totalSlides={slides.length}
+                coverStyle={selectedSlideIndex === 0 ? coverStyle : undefined}
               />
             </Card>
 

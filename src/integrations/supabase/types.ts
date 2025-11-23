@@ -17,6 +17,7 @@ export type Database = {
       carousels: {
         Row: {
           chosen_template: string
+          cover_style: string
           created_at: string
           id: string
           original_text: string
@@ -26,6 +27,7 @@ export type Database = {
         }
         Insert: {
           chosen_template?: string
+          cover_style?: string
           created_at?: string
           id?: string
           original_text: string
@@ -35,6 +37,7 @@ export type Database = {
         }
         Update: {
           chosen_template?: string
+          cover_style?: string
           created_at?: string
           id?: string
           original_text?: string
