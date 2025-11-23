@@ -159,6 +159,44 @@ const EditCarousel = () => {
     setSlides(newSlides);
   };
 
+  const handleRegenerateSlide = async (index: number) => {
+    try {
+      const slideToRegenerate = slides[index];
+      const combinedText = `${slideToRegenerate.title} ${slideToRegenerate.body}`;
+      
+      const { data, error } = await supabase.functions.invoke("generate-slides", {
+        body: { 
+          text: combinedText,
+          style: "Professional",
+          language: "he"
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.slides && data.slides.length > 0) {
+        const newSlides = [...slides];
+        newSlides[index] = {
+          ...data.slides[0],
+          index: index,
+        };
+        setSlides(newSlides);
+
+        toast({
+          title: "השקופית עודכנה בהצלחה",
+          description: "הטקסט נוצר מחדש באמצעות AI",
+        });
+      }
+    } catch (error) {
+      console.error("Error regenerating slide:", error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן ליצור מחדש את השקופית",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -268,7 +306,16 @@ const EditCarousel = () => {
 
             {/* Editor */}
             <Card className="p-6 space-y-4">
-              <h3 className="text-lg font-semibold">עריכת שקופית {selectedSlideIndex + 1}</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">עריכת שקופית {selectedSlideIndex + 1}</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRegenerateSlide(selectedSlideIndex)}
+                >
+                  יצירה מחדש עם AI
+                </Button>
+              </div>
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">כותרת</label>
