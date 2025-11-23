@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Download, Trash2, Copy } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SlidePreview from "@/components/SlidePreview";
+import RegenerateModal from "@/components/RegenerateModal";
 
 interface Slide {
   index: number;
@@ -25,12 +26,32 @@ const EditCarousel = () => {
   const [coverStyle, setCoverStyle] = useState<"minimalist" | "big_number" | "accent_block">("minimalist");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [regenerateModalOpen, setRegenerateModalOpen] = useState(false);
+  const [oldSlideData, setOldSlideData] = useState<{ title: string; body: string } | null>(null);
+  const [newSlideData, setNewSlideData] = useState<{ title: string; body: string } | null>(null);
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     fetchCarousel();
   }, [id]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        // Hebrew: next slide
+        setSelectedSlideIndex((prev) => Math.min(prev + 1, slides.length - 1));
+      } else if (e.key === "ArrowRight") {
+        // Hebrew: previous slide
+        setSelectedSlideIndex((prev) => Math.max(prev - 1, 0));
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [slides.length]);
 
   const fetchCarousel = async () => {
     try {
@@ -97,28 +118,51 @@ const EditCarousel = () => {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("export-carousel", {
-        body: {
-          carouselId: id,
-          slides,
-          template,
-        },
-      });
-
-      if (error) throw error;
-
+      // Dynamic import
+      const { toPng } = await import('html-to-image');
+      const JSZip = (await import('jszip')).default;
+      
+      const zip = new JSZip();
+      
+      // Export each slide
+      for (let i = 0; i < slides.length; i++) {
+        const slideElement = document.getElementById(`slide-preview-${i}`);
+        if (slideElement) {
+          const dataUrl = await toPng(slideElement, {
+            width: 1080,
+            height: 1080,
+            pixelRatio: 2,
+          });
+          
+          // Convert dataUrl to blob
+          const response = await fetch(dataUrl);
+          const blob = await response.blob();
+          zip.file(`slide-${i + 1}.png`, blob);
+        }
+      }
+      
+      // Generate ZIP
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      
+      // Download
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `carousel-${id}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
       toast({
-        title: "מייצא קרוסלה...",
-        description: "זה עשוי לקחת כמה שניות",
+        title: "הקרוסלה יוצאה בהצלחה!",
+        description: "הקובץ הורד למחשב שלך",
       });
-
-      // In a real implementation, we would handle the download here
-      console.log("Export data:", data);
     } catch (error) {
       console.error("Error exporting carousel:", error);
       toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה בייצוא הקרוסלה",
+        title: "תקלה ביצוא",
+        description: "נסו שוב או פנו לתמיכה",
         variant: "destructive",
       });
     } finally {
@@ -165,6 +209,9 @@ const EditCarousel = () => {
   const handleRegenerateSlide = async (index: number) => {
     try {
       const slideToRegenerate = slides[index];
+      setOldSlideData({ title: slideToRegenerate.title, body: slideToRegenerate.body });
+      setRegeneratingIndex(index);
+      
       const combinedText = `${slideToRegenerate.title} ${slideToRegenerate.body}`;
       
       const { data, error } = await supabase.functions.invoke("generate-slides", {
@@ -178,17 +225,11 @@ const EditCarousel = () => {
       if (error) throw error;
 
       if (data.slides && data.slides.length > 0) {
-        const newSlides = [...slides];
-        newSlides[index] = {
-          ...data.slides[0],
-          index: index,
-        };
-        setSlides(newSlides);
-
-        toast({
-          title: "השקופית עודכנה בהצלחה",
-          description: "הטקסט נוצר מחדש באמצעות AI",
+        setNewSlideData({
+          title: data.slides[0].title,
+          body: data.slides[0].body,
         });
+        setRegenerateModalOpen(true);
       }
     } catch (error) {
       console.error("Error regenerating slide:", error);
@@ -198,6 +239,30 @@ const EditCarousel = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleAcceptRegeneration = () => {
+    if (regeneratingIndex !== null && newSlideData) {
+      const newSlides = [...slides];
+      newSlides[regeneratingIndex] = {
+        ...newSlideData,
+        index: regeneratingIndex,
+      };
+      setSlides(newSlides);
+      setRegenerateModalOpen(false);
+      toast({
+        title: "השקופית עודכנה בהצלחה",
+        description: "הטקסט נוצר מחדש באמצעות AI",
+      });
+    }
+  };
+
+  const handleRejectRegeneration = () => {
+    setRegenerateModalOpen(false);
+    toast({
+      title: "בוטל",
+      description: "השקופית נשארה ללא שינוי",
+    });
   };
 
   if (loading) {
@@ -233,8 +298,8 @@ const EditCarousel = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="minimalist">מינימליסטי</SelectItem>
-                <SelectItem value="big_number">מספר גדול</SelectItem>
-                <SelectItem value="accent_block">בלוק צבעוני</SelectItem>
+                <SelectItem value="big_number">מספר בולט</SelectItem>
+                <SelectItem value="accent_block">אלמנט דקורטיבי</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={handleSave} variant="outline">
@@ -260,10 +325,10 @@ const EditCarousel = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-12 gap-6 max-w-7xl mx-auto">
+      <div className="container mx-auto px-4 py-4">
+        <div className="grid md:grid-cols-12 gap-4 max-w-7xl mx-auto h-[calc(100vh-140px)]">
           {/* Sidebar - Slides list */}
-          <Card className="md:col-span-3 p-4 space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
+          <Card className="md:col-span-3 p-3 space-y-2 overflow-y-auto h-full">
             <h3 className="font-semibold mb-4">שקופיות ({slides.length})</h3>
             {slides.map((slide, index) => (
               <div
@@ -306,53 +371,83 @@ const EditCarousel = () => {
           </Card>
 
           {/* Main area - Editor and preview */}
-          <div className="md:col-span-9 space-y-6">
-            {/* Preview */}
-            <Card className="p-6">
-              <SlidePreview
-                slide={selectedSlide}
-                template={template}
-                slideNumber={selectedSlideIndex + 1}
-                totalSlides={slides.length}
-                coverStyle={selectedSlideIndex === 0 ? coverStyle : undefined}
-              />
-            </Card>
-
-            {/* Editor */}
-            <Card className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">עריכת שקופית {selectedSlideIndex + 1}</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleRegenerateSlide(selectedSlideIndex)}
-                >
-                  יצירה מחדש עם AI
-                </Button>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">כותרת</label>
-                <Input
-                  value={selectedSlide.title}
-                  onChange={(e) => updateSlide("title", e.target.value)}
-                  placeholder="כותרת השקופית"
-                />
+          <div className="md:col-span-9 flex flex-col gap-3 h-full overflow-hidden">
+            {/* Preview and Editor side by side */}
+            <div className="flex gap-3 h-full">
+              {/* Preview */}
+              <div className="flex-shrink-0 w-[380px]">
+                <div id={`slide-preview-${selectedSlideIndex}`} className="w-full">
+                  <SlidePreview
+                    slide={selectedSlide}
+                    template={template}
+                    slideNumber={selectedSlideIndex + 1}
+                    totalSlides={slides.length}
+                    coverStyle={coverStyle}
+                    slideIndex={selectedSlideIndex}
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">תוכן</label>
-                <Textarea
-                  value={selectedSlide.body}
-                  onChange={(e) => updateSlide("body", e.target.value)}
-                  placeholder="תוכן השקופית"
-                  className="min-h-[150px] resize-none"
-                />
-              </div>
-            </Card>
+              {/* Editor */}
+              <Card className="flex-1 p-4 space-y-3 overflow-y-auto">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-semibold">עריכת שקופית {selectedSlideIndex + 1}</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRegenerateSlide(selectedSlideIndex)}
+                  >
+                    יצירה מחדש עם AI
+                  </Button>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">כותרת</label>
+                  <Input
+                    value={selectedSlide.title}
+                    onChange={(e) => updateSlide("title", e.target.value)}
+                    placeholder="כותרת השקופית"
+                    className="text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">תוכן</label>
+                  <Textarea
+                    value={selectedSlide.body}
+                    onChange={(e) => updateSlide("body", e.target.value)}
+                    placeholder="תוכן השקופית"
+                    className="min-h-[120px] resize-none text-sm"
+                  />
+                </div>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Regenerate Modal */}
+      {oldSlideData && newSlideData && (
+        <RegenerateModal
+          open={regenerateModalOpen}
+          onOpenChange={setRegenerateModalOpen}
+          oldSlide={oldSlideData}
+          newSlide={newSlideData}
+          onAccept={handleAcceptRegeneration}
+          onReject={handleRejectRegeneration}
+        />
+      )}
+
+      {/* Export Loading Overlay */}
+      {exporting && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <Card className="p-8 text-center">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-lg font-semibold">מייצא קרוסלה...</p>
+            <p className="text-sm text-muted-foreground mt-2">זה עשוי לקחת כמה שניות</p>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
