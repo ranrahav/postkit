@@ -6,12 +6,12 @@ interface SlidePreviewProps {
   template: "dark" | "light";
   slideNumber: number;
   totalSlides: number;
-  coverStyle?: "minimalist" | "big_number" | "accent_block";
+  coverStyle: "minimalist" | "big_number" | "accent_block";
+  slideIndex: number;
 }
 
-const SlidePreview = ({ slide, template, slideNumber, totalSlides, coverStyle }: SlidePreviewProps) => {
+const SlidePreview = ({ slide, template, slideNumber, totalSlides, coverStyle, slideIndex }: SlidePreviewProps) => {
   const isDark = template === "dark";
-  const isFirstSlide = slideNumber === 1;
 
   return (
     <div className="w-full aspect-square rounded-lg overflow-hidden shadow-2xl" dir="rtl">
@@ -22,24 +22,18 @@ const SlidePreview = ({ slide, template, slideNumber, totalSlides, coverStyle }:
             : "bg-template-light-bg text-template-light-text"
         } ${!isDark && "border-4 border-template-light-border"}`}
       >
-        {/* Cover Style Rendering (only for first slide) */}
-        {isFirstSlide && coverStyle && (
-          <>
-            {coverStyle === "big_number" && (
-              <div className="absolute top-8 right-12 text-9xl font-bold opacity-10">
-                1
-              </div>
-            )}
-            {coverStyle === "accent_block" && (
-              <div className={`absolute top-0 right-0 w-64 h-64 ${
-                isDark ? "bg-template-dark-accent" : "bg-template-light-accent"
-              } opacity-20 rounded-bl-full`} />
-            )}
-          </>
+        {/* Style Rendering (applied to all slides) */}
+        {coverStyle === "big_number" && (
+          <div className="absolute top-8 right-12 text-9xl font-bold opacity-10">
+            {slideNumber}
+          </div>
         )}
-
-        {/* Accent element - Top left for dark, highlight for light (non-cover slides) */}
-        {(!isFirstSlide || coverStyle === "minimalist") && (
+        {coverStyle === "accent_block" && (
+          <div className={`absolute top-0 right-0 w-64 h-64 ${
+            isDark ? "bg-template-dark-accent" : "bg-template-light-accent"
+          } opacity-20 rounded-bl-full`} />
+        )}
+        {coverStyle === "minimalist" && (
           <>
             {isDark ? (
               <div className="absolute top-0 right-0 w-32 h-2 bg-template-dark-accent" />
@@ -52,7 +46,7 @@ const SlidePreview = ({ slide, template, slideNumber, totalSlides, coverStyle }:
         {/* Content */}
         <div className="flex-1 flex flex-col justify-center space-y-8 relative z-10">
           <h2 className={`text-5xl font-bold leading-tight ${!isDark && "relative"} ${
-            isFirstSlide && coverStyle === "big_number" ? "text-6xl" : ""
+            coverStyle === "big_number" ? "text-6xl" : ""
           }`}>
             {slide.title}
           </h2>

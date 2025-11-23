@@ -93,27 +93,84 @@ const MyCarousels = () => {
 
   const handleExport = async (carousel: any) => {
     try {
-      const { data, error } = await supabase.functions.invoke("export-carousel", {
-        body: {
-          carouselId: carousel.id,
-          slides: carousel.slides,
-          template: carousel.chosen_template,
-        },
-      });
-
-      if (error) throw error;
-
       toast({
         title: "מייצא קרוסלה...",
         description: "זה עשוי לקחת כמה שניות",
       });
 
-      console.log("Export data:", data);
+      // Dynamic imports
+      const { toPng } = await import('html-to-image');
+      const JSZip = (await import('jszip')).default;
+      
+      const zip = new JSZip();
+      const slides = typeof carousel.slides === 'string' ? JSON.parse(carousel.slides) : carousel.slides;
+      
+      // Create temporary container for rendering
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.width = '1080px';
+      container.style.height = '1080px';
+      document.body.appendChild(container);
+
+      // Export each slide
+      for (let i = 0; i < slides.length; i++) {
+        // Import SlidePreview and React dynamically
+        const { default: SlidePreview } = await import('@/components/SlidePreview');
+        const { createRoot } = await import('react-dom/client');
+        
+        const root = createRoot(container);
+        root.render(
+          SlidePreview({
+            slide: slides[i],
+            template: carousel.chosen_template,
+            slideNumber: i + 1,
+            totalSlides: slides.length,
+            coverStyle: carousel.cover_style || "minimalist",
+            slideIndex: i,
+          })
+        );
+
+        // Wait for render
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const dataUrl = await toPng(container.firstChild as HTMLElement, {
+          width: 1080,
+          height: 1080,
+          pixelRatio: 2,
+        });
+        
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+        zip.file(`slide-${i + 1}.png`, blob);
+        
+        root.unmount();
+      }
+      
+      document.body.removeChild(container);
+      
+      // Generate ZIP
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      
+      // Download
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `carousel-${carousel.id}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "הקרוסלה יוצאה בהצלחה!",
+        description: "הקובץ הורד למחשב שלך",
+      });
     } catch (error) {
       console.error("Error exporting carousel:", error);
       toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה בייצוא הקרוסלה",
+        title: "תקלה ביצוא",
+        description: "נסו שוב או פנו לתמיכה",
         variant: "destructive",
       });
     }

@@ -64,68 +64,62 @@ const Landing = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <h2 className="text-5xl md:text-6xl font-bold leading-tight">
-            הפוך כל טקסט לקרוסלת{" "}
-            <span className="bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent">
-              לינקדאין
-            </span>{" "}
-            תוך שניות
-          </h2>
-          <p className="text-xl text-muted-foreground">
-            צור קרוסלות מקצועיות ומעוצבות מטקסט ארוך בעברית או אנגלית
-          </p>
-          <Button size="lg" onClick={handleGetStarted} className="text-lg px-8 py-6">
-            התחל בחינם
-          </Button>
-        </div>
+      <section className="container mx-auto px-4 py-8 text-center">
+        <h1 className="text-6xl md:text-7xl font-bold mb-4 bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent leading-tight">
+          צרו קרוסלות LinkedIn מקצועיות בקלות
+        </h1>
+        <p className="text-2xl text-muted-foreground mb-6 max-w-3xl mx-auto font-medium">
+          הדביקו טקסט, בחרו עיצוב, וקבלו קרוסלה מוכנה להורדה תוך שניות
+        </p>
+        <Button size="lg" onClick={handleGetStarted} className="text-xl px-12 py-7 shadow-lg hover:shadow-xl transition-shadow">
+          התחילו חינם
+        </Button>
       </section>
 
       {/* Features Section */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <Card className="p-8 text-center space-y-4 hover:shadow-lg transition-shadow">
-            <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center mx-auto">
-              <FileText className="w-6 h-6 text-accent" />
+      <section className="container mx-auto px-4 py-6">
+        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+            <div className="mb-3 flex justify-center">
+              <FileText className="h-10 w-10 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold">מדביקים טקסט</h3>
-            <p className="text-muted-foreground">
-              העתק כל תוכן - פוסט, מאמר או רעיון - והדבק בממשק הפשוט שלנו
+            <h3 className="text-xl font-semibold mb-2">הדביקו טקסט</h3>
+            <p className="text-muted-foreground text-sm">
+              העתיקו את התוכן שלכם והבינה המלאכותית תיצור מבנה קרוסלה מקצועי
             </p>
           </Card>
 
-          <Card className="p-8 text-center space-y-4 hover:shadow-lg transition-shadow">
-            <div className="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center mx-auto">
-              <Sparkles className="w-6 h-6 text-success" />
+          <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+            <div className="mb-3 flex justify-center">
+              <Sparkles className="h-10 w-10 text-accent" />
             </div>
-            <h3 className="text-xl font-semibold">בוחרים עיצוב</h3>
-            <p className="text-muted-foreground">
-              בחר מבין תבניות עיצוב מקצועיות שמותאמות לרשתות החברתיות
+            <h3 className="text-xl font-semibold mb-2">בחרו עיצוב</h3>
+            <p className="text-muted-foreground text-sm">
+              התאימו אישית את סגנון הקרוסלה, צבעים ותבניות עיצוב
             </p>
           </Card>
 
-          <Card className="p-8 text-center space-y-4 hover:shadow-lg transition-shadow">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-              <Download className="w-6 h-6 text-primary" />
+          <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+            <div className="mb-3 flex justify-center">
+              <Download className="h-10 w-10 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold">מורידים קרוסלה</h3>
-            <p className="text-muted-foreground">
-              ייצא את הקרוסלה שלך כתמונות או PDF מוכנות לפרסום
+            <h3 className="text-xl font-semibold mb-2">הורידו קרוסלה</h3>
+            <p className="text-muted-foreground text-sm">
+              ייצאו את הקרוסלה כ-PNG או PDF והעלו ל-LinkedIn
             </p>
           </Card>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
-        <Card className="max-w-2xl mx-auto p-12 bg-gradient-to-br from-primary/5 to-accent/5 border-2">
-          <h3 className="text-3xl font-bold mb-4">מוכנים להתחיל?</h3>
-          <p className="text-lg text-muted-foreground mb-6">
-            הצטרף לאלפי יוצרי תוכן שכבר משתמשים ב-SlideMint
+      <section className="container mx-auto px-4 py-6 text-center">
+        <Card className="max-w-3xl mx-auto p-8 bg-gradient-to-br from-primary/10 to-accent/10 border-2 border-primary/20">
+          <h2 className="text-3xl font-bold mb-3">מוכנים להתחיל?</h2>
+          <p className="text-muted-foreground mb-5 text-lg">
+            הצטרפו לאלפי משתמשים שכבר יצרו קרוסלות מרשימות
           </p>
-          <Button size="lg" onClick={handleGetStarted} className="text-lg px-8 py-6">
-            צור קרוסלה עכשיו
+          <Button size="lg" onClick={handleGetStarted} className="text-lg px-10 py-6">
+            צרו את הקרוסלה הראשונה שלכם
           </Button>
         </Card>
       </section>
