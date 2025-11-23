@@ -79,7 +79,7 @@ const Landing = () => {
       </section>
 
       {/* Features Section */}
-      <section className="container px-4 py-[50px] mx-[450px]">
+      <section className="container px-4 py-[50px] mx-[250px]">
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           <Card className="p-8 text-center space-y-4 hover:shadow-lg transition-shadow">
             <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center mx-auto">
