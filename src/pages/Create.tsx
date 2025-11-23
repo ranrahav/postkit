@@ -9,6 +9,7 @@ import { Loader2, FileText } from "lucide-react";
 
 const Create = () => {
   const [text, setText] = useState("");
+  const [style, setStyle] = useState("Professional");
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -47,6 +48,11 @@ const Create = () => {
     setProfile(data);
   };
 
+  const detectLanguage = (text: string): string => {
+    const hebrewChars = text.match(/[\u0590-\u05FF]/g);
+    return hebrewChars && hebrewChars.length > text.length * 0.3 ? 'he' : 'en';
+  };
+
   const handleGenerate = async () => {
     if (!text.trim()) {
       toast({
@@ -69,8 +75,10 @@ const Create = () => {
     setLoading(true);
 
     try {
+      const language = detectLanguage(text);
+      
       const { data, error } = await supabase.functions.invoke("generate-slides", {
-        body: { text },
+        body: { text, style, language },
       });
 
       if (error) throw error;
@@ -142,11 +150,26 @@ const Create = () => {
               </p>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-sm font-medium">סגנון תוכן</label>
+              <select
+                value={style}
+                onChange={(e) => setStyle(e.target.value)}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                disabled={loading}
+              >
+                <option value="Professional">מקצועי</option>
+                <option value="Storytelling">סיפורי</option>
+                <option value="Educational">חינוכי</option>
+                <option value="List / Tips">רשימה / טיפים</option>
+              </select>
+            </div>
+
             <Textarea
               placeholder="הדבק כאן פוסט, מאמר או רעיון, בעברית או באנגלית..."
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="min-h-[400px] text-base resize-none"
+              className="min-h-[350px] text-base resize-none"
               disabled={loading}
             />
 
