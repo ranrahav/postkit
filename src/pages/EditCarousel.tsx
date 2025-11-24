@@ -125,21 +125,57 @@ const EditCarousel = () => {
       
       const zip = new JSZip();
       const carouselName = carousel?.carousel_name || "carousel";
+      let failedSlides = 0;
+      
+      // Create hidden container for rendering all slides
+      const hiddenContainer = document.createElement('div');
+      hiddenContainer.style.position = 'fixed';
+      hiddenContainer.style.left = '-9999px';
+      hiddenContainer.style.top = '0';
+      document.body.appendChild(hiddenContainer);
       
       for (let i = 0; i < slides.length; i++) {
-        const slideElement = document.getElementById(`slide-preview-${i}`);
-        if (slideElement) {
-          const dataUrl = await toPng(slideElement, {
-            width: 1080,
-            height: 1080,
-            pixelRatio: 2,
-          });
-          
-          const response = await fetch(dataUrl);
-          const blob = await response.blob();
-          zip.file(`${carouselName}-slide-${i + 1}.png`, blob);
+        try {
+          // Clone the current slide preview and render it
+          const originalElement = document.getElementById(`slide-preview-${selectedSlideIndex}`);
+          if (originalElement) {
+            const clonedElement = originalElement.cloneNode(true) as HTMLElement;
+            clonedElement.id = `temp-slide-${i}`;
+            hiddenContainer.appendChild(clonedElement);
+            
+            // Update the cloned element with the correct slide data
+            const slide = slides[i];
+            const titleElement = clonedElement.querySelector('[data-slide-title]');
+            const bodyElement = clonedElement.querySelector('[data-slide-body]');
+            const numberElement = clonedElement.querySelector('[data-slide-number]');
+            
+            if (titleElement) titleElement.textContent = slide.title;
+            if (bodyElement) bodyElement.textContent = slide.body;
+            if (numberElement) numberElement.textContent = `${i + 1}`;
+            
+            // Wait a bit for render
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const dataUrl = await toPng(clonedElement, {
+              width: 1080,
+              height: 1080,
+              pixelRatio: 2,
+            });
+            
+            const response = await fetch(dataUrl);
+            const blob = await response.blob();
+            zip.file(`${carouselName}-slide-${i + 1}.png`, blob);
+            
+            hiddenContainer.removeChild(clonedElement);
+          }
+        } catch (error) {
+          console.error(`Error exporting slide ${i + 1}:`, error);
+          failedSlides++;
         }
       }
+      
+      // Clean up hidden container
+      document.body.removeChild(hiddenContainer);
       
       const zipBlob = await zip.generateAsync({ type: 'blob' });
       
@@ -152,10 +188,18 @@ const EditCarousel = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      toast({
-        title: "הקרוסלה יוצאה בהצלחה!",
-        description: "הקובץ הורד למחשב שלך",
-      });
+      if (failedSlides > 0) {
+        toast({
+          title: "חלק מהשקופיות לא יוצרו",
+          description: "נסו שוב.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "הקרוסלה יוצאה בהצלחה!",
+          description: "הקובץ הורד למחשב שלך",
+        });
+      }
     } catch (error) {
       console.error("Error exporting carousel:", error);
       toast({
@@ -325,19 +369,19 @@ const EditCarousel = () => {
           </h1>
           <div className="flex gap-2">
             <Select value={template} onValueChange={(value: "dark" | "light") => setTemplate(value)}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-32" dir="rtl">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent align="end" dir="rtl">
                 <SelectItem value="dark">תבנית כהה</SelectItem>
                 <SelectItem value="light">תבנית בהירה</SelectItem>
               </SelectContent>
             </Select>
             <Select value={coverStyle} onValueChange={(value) => setCoverStyle(value as "minimalist" | "big_number" | "accent_block")}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-40" dir="rtl">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent align="end" dir="rtl">
                 <SelectItem value="minimalist">מינימליסטי</SelectItem>
                 <SelectItem value="big_number">מספר בולט</SelectItem>
                 <SelectItem value="accent_block">אלמנט דקורטיבי</SelectItem>
@@ -358,61 +402,8 @@ const EditCarousel = () => {
 
       <div className="container mx-auto px-4 py-3">
         <div className="flex gap-3 max-w-7xl mx-auto" style={{ height: 'calc(100vh - 120px)' }}>
-          {/* Main content area */}
-          <div className="flex-1 flex flex-col gap-3 min-w-0">
-            {/* Large slide preview */}
-            <div className="flex-shrink-0">
-              <div id={`slide-preview-${selectedSlideIndex}`} className="w-full max-w-2xl mx-auto">
-                <SlidePreview
-                  slide={selectedSlide}
-                  template={template}
-                  slideNumber={selectedSlideIndex + 1}
-                  totalSlides={slides.length}
-                  coverStyle={coverStyle}
-                  slideIndex={selectedSlideIndex}
-                />
-              </div>
-            </div>
-
-            {/* Editor panel below preview */}
-            <Card className="p-4 space-y-3 overflow-y-auto flex-1">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold">עריכת שקופית {selectedSlideIndex + 1}</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleRegenerateSlide(selectedSlideIndex)}
-                >
-                  יצירה מחדש עם AI
-                </Button>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">כותרת</label>
-                  <Input
-                    value={selectedSlide.title}
-                    onChange={(e) => updateSlide("title", e.target.value)}
-                    placeholder="כותרת השקופית"
-                    className="text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">תוכן</label>
-                  <Textarea
-                    value={selectedSlide.body}
-                    onChange={(e) => updateSlide("body", e.target.value)}
-                    placeholder="תוכן השקופית"
-                    className="min-h-[80px] resize-none text-sm"
-                  />
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Sidebar - Slides list */}
-          <Card className="w-64 p-3 space-y-2 overflow-y-auto flex-shrink-0">
+          {/* Slide list - right side in Hebrew RTL */}
+          <Card className="w-64 p-3 space-y-2 overflow-y-auto flex-shrink-0 order-2">
             <h3 className="font-semibold mb-3">שקופיות ({slides.length})</h3>
             {slides.map((slide, index) => (
               <div
@@ -453,6 +444,59 @@ const EditCarousel = () => {
               </div>
             ))}
           </Card>
+
+          {/* Main content area */}
+          <div className="flex-1 flex flex-col gap-3 min-w-0 order-1">
+            {/* Large slide preview */}
+            <div className="flex-shrink-0">
+              <div id={`slide-preview-${selectedSlideIndex}`} className="w-full max-w-2xl mx-auto">
+                <SlidePreview
+                  slide={selectedSlide}
+                  template={template}
+                  slideNumber={selectedSlideIndex + 1}
+                  totalSlides={slides.length}
+                  coverStyle={coverStyle}
+                  slideIndex={selectedSlideIndex}
+                />
+              </div>
+            </div>
+
+            {/* Editor panel below preview */}
+            <Card className="p-4 space-y-3 overflow-y-auto flex-1">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold">עריכת שקופית {selectedSlideIndex + 1}</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRegenerateSlide(selectedSlideIndex)}
+                >
+                  יצירה מחדש עם AI
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">כותרת</label>
+                  <Textarea
+                    value={selectedSlide.title}
+                    onChange={(e) => updateSlide("title", e.target.value)}
+                    placeholder="כותרת השקופית"
+                    className="min-h-[120px] resize-none text-base"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">תוכן</label>
+                  <Textarea
+                    value={selectedSlide.body}
+                    onChange={(e) => updateSlide("body", e.target.value)}
+                    placeholder="תוכן השקופית"
+                    className="min-h-[120px] resize-none text-base"
+                  />
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
 

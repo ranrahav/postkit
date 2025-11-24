@@ -47,17 +47,17 @@ const SlidePreview = ({ slide, template, slideNumber, totalSlides, coverStyle, s
         <div className="flex-1 flex flex-col justify-center space-y-8 relative z-10">
           <h2 className={`text-5xl font-bold leading-tight ${!isDark && "relative"} ${
             coverStyle === "big_number" ? "text-6xl" : ""
-          }`}>
+          }`} data-slide-title>
             {slide.title}
           </h2>
-          <p className="text-2xl leading-relaxed opacity-90">
+          <p className="text-2xl leading-relaxed opacity-90" data-slide-body>
             {slide.body}
           </p>
         </div>
 
         {/* Slide number */}
         <div className="flex justify-between items-end">
-          <div className={`text-lg font-medium ${isDark ? "text-template-dark-accent" : "text-template-light-accent"}`}>
+          <div className={`text-lg font-medium ${isDark ? "text-template-dark-accent" : "text-template-light-accent"}`} data-slide-number>
             {slideNumber}/{totalSlides}
           </div>
           <div className="text-xl font-semibold opacity-50">
