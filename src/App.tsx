@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Create from "./pages/Create";
 import EditCarousel from "./pages/EditCarousel";
 import MyCarousels from "./pages/MyCarousels";
@@ -21,6 +22,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/create" element={<Create />} />
           <Route path="/edit/:id" element={<EditCarousel />} />
           <Route path="/my-carousels" element={<MyCarousels />} />
