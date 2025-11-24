@@ -92,6 +92,7 @@ const Create = () => {
           slides: data.slides,
           chosen_template: "dark",
           cover_style: coverStyle,
+          carousel_name: data.slides[0]?.title || "קרוסלה ללא שם",
         })
         .select()
         .single();
@@ -142,91 +143,82 @@ const Create = () => {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 gap-8 max-w-7xl mx-auto">
-          {/* Left side - Input */}
-          <Card className="p-6 space-y-4">
+        <div className="max-w-3xl mx-auto">
+          <Card className="p-8 space-y-6">
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold">יצירת קרוסלה חדשה</h2>
+              <h2 className="text-3xl font-bold">יצירת קרוסלה חדשה</h2>
               <p className="text-muted-foreground">
                 הדבק את הטקסט שלך ותן לנו להפוך אותו לקרוסלה מקצועית
               </p>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">סגנון תוכן</label>
-              <select
-                value={style}
-                onChange={(e) => setStyle(e.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                disabled={loading}
-              >
-                <option value="Professional">מקצועי</option>
-                <option value="Storytelling">סיפורי</option>
-                <option value="Educational">חינוכי</option>
-                <option value="List / Tips">רשימה / טיפים</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">סגנון עטיפה</label>
-              <select
-                value={coverStyle}
-                onChange={(e) => setCoverStyle(e.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                disabled={loading}
-              >
-                <option value="minimalist">מינימליסטי (טקסט בלבד)</option>
-                <option value="big_number">מספר גדול + כותרת</option>
-                <option value="accent_block">בלוק צבעוני + כותרת</option>
-              </select>
-            </div>
-
-            <Textarea
-              placeholder="הדבק כאן פוסט, מאמר או רעיון, בעברית או באנגלית..."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              className="min-h-[350px] text-base resize-none"
-              disabled={loading}
-            />
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {wordCount} מילים
-              </span>
-              {profile && (
-                <span className="text-sm text-muted-foreground">
-                  {profile.carousel_count}/10 קרוסלות
-                </span>
-              )}
-            </div>
-
-            <Button
-              onClick={handleGenerate}
-              disabled={loading || !text.trim()}
-              className="w-full"
-              size="lg"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="ml-2 h-5 w-5 animate-spin" />
-                  יוצר קרוסלה...
-                </>
-              ) : (
-                "צור מבנה שקופיות"
-              )}
-            </Button>
-          </Card>
-
-          {/* Right side - Preview placeholder */}
-          <Card className="p-6 flex items-center justify-center bg-muted/30">
-            <div className="text-center space-y-4 max-w-md">
-              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                <FileText className="w-10 h-10 text-primary" />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">סגנון תוכן</label>
+                <select
+                  value={style}
+                  onChange={(e) => setStyle(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                  disabled={loading}
+                >
+                  <option value="Professional">מקצועי</option>
+                  <option value="Storytelling">סיפורי</option>
+                  <option value="Educational">חינוכי</option>
+                  <option value="List / Tips">רשימה / טיפים</option>
+                </select>
               </div>
-              <h3 className="text-xl font-semibold">תצוגה מקדימה</h3>
-              <p className="text-muted-foreground">
-                כאן תופיע תצוגה מקדימה של השקופיות אחרי יצירה
-              </p>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">סגנון עטיפה</label>
+                <select
+                  value={coverStyle}
+                  onChange={(e) => setCoverStyle(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                  disabled={loading}
+                >
+                  <option value="minimalist">מינימליסטי</option>
+                  <option value="big_number">מספר בולט</option>
+                  <option value="accent_block">אלמנט דקורטיבי</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">טקסט התוכן</label>
+                <Textarea
+                  placeholder="הדבק כאן פוסט, מאמר או רעיון, בעברית או באנגלית..."
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  className="min-h-[400px] text-base resize-none"
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {wordCount} מילים
+                </span>
+                {profile && (
+                  <span className="text-sm text-muted-foreground">
+                    {profile.carousel_count}/10 קרוסלות
+                  </span>
+                )}
+              </div>
+
+              <Button
+                onClick={handleGenerate}
+                disabled={loading || !text.trim()}
+                className="w-full"
+                size="lg"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="ml-2 h-5 w-5 animate-spin" />
+                    יוצר קרוסלה...
+                  </>
+                ) : (
+                  "צור מבנה שקופיות"
+                )}
+              </Button>
             </div>
           </Card>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Download, Trash2, Copy } from "lucide-react";
+import { Loader2, Trash2, Copy } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SlidePreview from "@/components/SlidePreview";
 import RegenerateModal from "@/components/RegenerateModal";
+import ExportModal from "@/components/ExportModal";
 
 interface Slide {
   index: number;
@@ -26,6 +27,7 @@ const EditCarousel = () => {
   const [coverStyle, setCoverStyle] = useState<"minimalist" | "big_number" | "accent_block">("minimalist");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [regenerateModalOpen, setRegenerateModalOpen] = useState(false);
   const [oldSlideData, setOldSlideData] = useState<{ title: string; body: string } | null>(null);
   const [newSlideData, setNewSlideData] = useState<{ title: string; body: string } | null>(null);
@@ -118,13 +120,12 @@ const EditCarousel = () => {
   const handleExport = async () => {
     setExporting(true);
     try {
-      // Dynamic import
       const { toPng } = await import('html-to-image');
       const JSZip = (await import('jszip')).default;
       
       const zip = new JSZip();
+      const carouselName = carousel?.carousel_name || "carousel";
       
-      // Export each slide
       for (let i = 0; i < slides.length; i++) {
         const slideElement = document.getElementById(`slide-preview-${i}`);
         if (slideElement) {
@@ -134,21 +135,18 @@ const EditCarousel = () => {
             pixelRatio: 2,
           });
           
-          // Convert dataUrl to blob
           const response = await fetch(dataUrl);
           const blob = await response.blob();
-          zip.file(`slide-${i + 1}.png`, blob);
+          zip.file(`${carouselName}-slide-${i + 1}.png`, blob);
         }
       }
       
-      // Generate ZIP
       const zipBlob = await zip.generateAsync({ type: 'blob' });
       
-      // Download
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `carousel-${id}.zip`;
+      a.download = `${carouselName}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -160,6 +158,49 @@ const EditCarousel = () => {
       });
     } catch (error) {
       console.error("Error exporting carousel:", error);
+      toast({
+        title: "תקלה ביצוא",
+        description: "נסו שוב או פנו לתמיכה",
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportCurrent = async () => {
+    setExporting(true);
+    try {
+      const { toPng } = await import('html-to-image');
+      const carouselName = carousel?.carousel_name || "carousel";
+      
+      const slideElement = document.getElementById(`slide-preview-${selectedSlideIndex}`);
+      if (slideElement) {
+        const dataUrl = await toPng(slideElement, {
+          width: 1080,
+          height: 1080,
+          pixelRatio: 2,
+        });
+        
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${carouselName}-slide-${selectedSlideIndex + 1}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        toast({
+          title: "השקופית יוצאה בהצלחה!",
+          description: "הקובץ הורד למחשב שלך",
+        });
+      }
+    } catch (error) {
+      console.error("Error exporting slide:", error);
       toast({
         title: "תקלה ביצוא",
         description: "נסו שוב או פנו לתמיכה",
@@ -278,7 +319,7 @@ const EditCarousel = () => {
   return (
     <div dir="rtl" className="min-h-screen bg-gradient-to-b from-background to-muted">
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <h1 className="text-2xl font-bold bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent">
             SlideMint
           </h1>
@@ -293,7 +334,7 @@ const EditCarousel = () => {
               </SelectContent>
             </Select>
             <Select value={coverStyle} onValueChange={(value) => setCoverStyle(value as "minimalist" | "big_number" | "accent_block")}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -302,38 +343,81 @@ const EditCarousel = () => {
                 <SelectItem value="accent_block">אלמנט דקורטיבי</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={handleSave} variant="outline">
+            <Button onClick={handleSave} variant="outline" size="sm">
               שמור
             </Button>
-            <Button onClick={handleExport} disabled={exporting}>
-              {exporting ? (
-                <>
-                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                  מייצא...
-                </>
-              ) : (
-                <>
-                  <Download className="ml-2 h-4 w-4" />
-                  ייצא
-                </>
-              )}
+            <Button onClick={() => setExportModalOpen(true)} disabled={exporting} size="sm">
+              ייצא
             </Button>
-            <Button variant="ghost" onClick={() => navigate("/my-carousels")}>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/my-carousels")}>
               חזרה
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-4">
-        <div className="grid md:grid-cols-12 gap-4 max-w-7xl mx-auto h-[calc(100vh-140px)]">
+      <div className="container mx-auto px-4 py-3">
+        <div className="flex gap-3 max-w-7xl mx-auto" style={{ height: 'calc(100vh - 120px)' }}>
+          {/* Main content area */}
+          <div className="flex-1 flex flex-col gap-3 min-w-0">
+            {/* Large slide preview */}
+            <div className="flex-shrink-0">
+              <div id={`slide-preview-${selectedSlideIndex}`} className="w-full max-w-2xl mx-auto">
+                <SlidePreview
+                  slide={selectedSlide}
+                  template={template}
+                  slideNumber={selectedSlideIndex + 1}
+                  totalSlides={slides.length}
+                  coverStyle={coverStyle}
+                  slideIndex={selectedSlideIndex}
+                />
+              </div>
+            </div>
+
+            {/* Editor panel below preview */}
+            <Card className="p-4 space-y-3 overflow-y-auto flex-1">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold">עריכת שקופית {selectedSlideIndex + 1}</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRegenerateSlide(selectedSlideIndex)}
+                >
+                  יצירה מחדש עם AI
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">כותרת</label>
+                  <Input
+                    value={selectedSlide.title}
+                    onChange={(e) => updateSlide("title", e.target.value)}
+                    placeholder="כותרת השקופית"
+                    className="text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">תוכן</label>
+                  <Textarea
+                    value={selectedSlide.body}
+                    onChange={(e) => updateSlide("body", e.target.value)}
+                    placeholder="תוכן השקופית"
+                    className="min-h-[80px] resize-none text-sm"
+                  />
+                </div>
+              </div>
+            </Card>
+          </div>
+
           {/* Sidebar - Slides list */}
-          <Card className="md:col-span-3 p-3 space-y-2 overflow-y-auto h-full">
-            <h3 className="font-semibold mb-4">שקופיות ({slides.length})</h3>
+          <Card className="w-64 p-3 space-y-2 overflow-y-auto flex-shrink-0">
+            <h3 className="font-semibold mb-3">שקופיות ({slides.length})</h3>
             {slides.map((slide, index) => (
               <div
                 key={index}
-                className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                className={`p-2 rounded-lg border cursor-pointer transition-all ${
                   selectedSlideIndex === index
                     ? "bg-accent/10 border-accent"
                     : "hover:bg-muted"
@@ -369,60 +453,6 @@ const EditCarousel = () => {
               </div>
             ))}
           </Card>
-
-          {/* Main area - Editor and preview */}
-          <div className="md:col-span-9 flex flex-col gap-3 h-full overflow-hidden">
-            {/* Preview and Editor side by side */}
-            <div className="flex gap-3 h-full">
-              {/* Preview */}
-              <div className="flex-shrink-0 w-[380px]">
-                <div id={`slide-preview-${selectedSlideIndex}`} className="w-full">
-                  <SlidePreview
-                    slide={selectedSlide}
-                    template={template}
-                    slideNumber={selectedSlideIndex + 1}
-                    totalSlides={slides.length}
-                    coverStyle={coverStyle}
-                    slideIndex={selectedSlideIndex}
-                  />
-                </div>
-              </div>
-
-              {/* Editor */}
-              <Card className="flex-1 p-4 space-y-3 overflow-y-auto">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-semibold">עריכת שקופית {selectedSlideIndex + 1}</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRegenerateSlide(selectedSlideIndex)}
-                  >
-                    יצירה מחדש עם AI
-                  </Button>
-                </div>
-                
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">כותרת</label>
-                  <Input
-                    value={selectedSlide.title}
-                    onChange={(e) => updateSlide("title", e.target.value)}
-                    placeholder="כותרת השקופית"
-                    className="text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">תוכן</label>
-                  <Textarea
-                    value={selectedSlide.body}
-                    onChange={(e) => updateSlide("body", e.target.value)}
-                    placeholder="תוכן השקופית"
-                    className="min-h-[120px] resize-none text-sm"
-                  />
-                </div>
-              </Card>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -438,12 +468,20 @@ const EditCarousel = () => {
         />
       )}
 
+      {/* Export Modal */}
+      <ExportModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        onExportAll={handleExport}
+        onExportCurrent={handleExportCurrent}
+      />
+
       {/* Export Loading Overlay */}
       {exporting && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="p-8 text-center">
             <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-lg font-semibold">מייצא קרוסלה...</p>
+            <p className="text-lg font-semibold">מייצא...</p>
             <p className="text-sm text-muted-foreground mt-2">זה עשוי לקחת כמה שניות</p>
           </Card>
         </div>

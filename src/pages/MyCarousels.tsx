@@ -142,7 +142,8 @@ const MyCarousels = () => {
         
         const response = await fetch(dataUrl);
         const blob = await response.blob();
-        zip.file(`slide-${i + 1}.png`, blob);
+        const carouselName = carousel.carousel_name || "carousel";
+        zip.file(`${carouselName}-slide-${i + 1}.png`, blob);
         
         root.unmount();
       }
@@ -152,11 +153,11 @@ const MyCarousels = () => {
       // Generate ZIP
       const zipBlob = await zip.generateAsync({ type: 'blob' });
       
-      // Download
+      const carouselName = carousel.carousel_name || "carousel";
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `carousel-${carousel.id}.zip`;
+      a.download = `${carouselName}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
