@@ -6,7 +6,7 @@ interface SlidePreviewProps {
   template: "dark" | "light";
   slideNumber: number;
   totalSlides: number;
-  coverStyle: "minimalist" | "big_number" | "accent_block";
+  coverStyle: "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame";
   slideIndex: number;
 }
 
@@ -41,6 +41,28 @@ const SlidePreview = ({ slide, template, slideNumber, totalSlides, coverStyle, s
               <div className="absolute top-12 right-12 w-24 h-3 bg-template-light-accent/30 -z-0" />
             )}
           </>
+        )}
+        {coverStyle === "gradient_overlay" && (
+          <div className={`absolute inset-0 ${
+            isDark 
+              ? "bg-gradient-to-br from-template-dark-accent/20 via-transparent to-transparent" 
+              : "bg-gradient-to-br from-template-light-accent/30 via-transparent to-transparent"
+          }`} />
+        )}
+        {coverStyle === "geometric" && (
+          <>
+            <div className={`absolute top-0 left-0 w-32 h-32 ${
+              isDark ? "border-t-4 border-l-4 border-template-dark-accent" : "border-t-4 border-l-4 border-template-light-accent"
+            }`} />
+            <div className={`absolute bottom-0 right-0 w-32 h-32 ${
+              isDark ? "border-b-4 border-r-4 border-template-dark-accent" : "border-b-4 border-r-4 border-template-light-accent"
+            }`} />
+          </>
+        )}
+        {coverStyle === "bold_frame" && (
+          <div className={`absolute top-0 right-0 w-3 h-full ${
+            isDark ? "bg-template-dark-accent" : "bg-template-light-accent"
+          }`} />
         )}
 
         {/* Content */}

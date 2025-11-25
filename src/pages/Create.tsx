@@ -10,7 +10,7 @@ import { Loader2, FileText } from "lucide-react";
 const Create = () => {
   const [text, setText] = useState("");
   const [style, setStyle] = useState("Professional");
-  const [coverStyle, setCoverStyle] = useState("minimalist");
+  const [coverStyle, setCoverStyle] = useState<"minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame">("minimalist");
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -172,13 +172,16 @@ const Create = () => {
                 <label className="text-sm font-medium">סגנון עטיפה</label>
                 <select
                   value={coverStyle}
-                  onChange={(e) => setCoverStyle(e.target.value)}
+                  onChange={(e) => setCoverStyle(e.target.value as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame")}
                   className="w-full px-3 py-2 border border-input rounded-md bg-background"
                   disabled={loading}
                 >
                   <option value="minimalist">מינימליסטי</option>
                   <option value="big_number">מספר בולט</option>
                   <option value="accent_block">אלמנט דקורטיבי</option>
+                  <option value="gradient_overlay">גרדיאנט</option>
+                  <option value="geometric">גיאומטרי</option>
+                  <option value="bold_frame">מסגרת בולטת</option>
                 </select>
               </div>
 

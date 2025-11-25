@@ -24,7 +24,7 @@ const EditCarousel = () => {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(0);
   const [template, setTemplate] = useState<"dark" | "light">("dark");
-  const [coverStyle, setCoverStyle] = useState<"minimalist" | "big_number" | "accent_block">("minimalist");
+  const [coverStyle, setCoverStyle] = useState<"minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame">("minimalist");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -76,7 +76,7 @@ const EditCarousel = () => {
       const parsedSlides = typeof data.slides === 'string' ? JSON.parse(data.slides) : data.slides;
       setSlides(parsedSlides as Slide[]);
       setTemplate(data.chosen_template as "dark" | "light");
-      setCoverStyle((data.cover_style || "minimalist") as "minimalist" | "big_number" | "accent_block");
+      setCoverStyle((data.cover_style || "minimalist") as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame");
     } catch (error) {
       console.error("Error fetching carousel:", error);
       toast({
@@ -377,7 +377,7 @@ const EditCarousel = () => {
                 <SelectItem value="light">תבנית בהירה</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={coverStyle} onValueChange={(value) => setCoverStyle(value as "minimalist" | "big_number" | "accent_block")}>
+            <Select value={coverStyle} onValueChange={(value) => setCoverStyle(value as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame")}>
               <SelectTrigger className="w-40" dir="rtl">
                 <SelectValue />
               </SelectTrigger>
@@ -385,6 +385,9 @@ const EditCarousel = () => {
                 <SelectItem value="minimalist">מינימליסטי</SelectItem>
                 <SelectItem value="big_number">מספר בולט</SelectItem>
                 <SelectItem value="accent_block">אלמנט דקורטיבי</SelectItem>
+                <SelectItem value="gradient_overlay">גרדיאנט</SelectItem>
+                <SelectItem value="geometric">גיאומטרי</SelectItem>
+                <SelectItem value="bold_frame">מסגרת בולטת</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={handleSave} variant="outline" size="sm">
@@ -402,8 +405,8 @@ const EditCarousel = () => {
 
       <div className="container mx-auto px-4 py-3">
         <div className="flex gap-3 max-w-7xl mx-auto" style={{ height: 'calc(100vh - 120px)' }}>
-          {/* Slide list - right side in Hebrew RTL */}
-          <Card className="w-64 p-3 space-y-2 overflow-y-auto flex-shrink-0 order-2">
+          {/* Slide list - left side in Hebrew RTL */}
+          <Card className="w-64 p-3 space-y-2 overflow-y-auto flex-shrink-0 order-1">
             <h3 className="font-semibold mb-3">שקופיות ({slides.length})</h3>
             {slides.map((slide, index) => (
               <div
@@ -446,7 +449,7 @@ const EditCarousel = () => {
           </Card>
 
           {/* Main content area */}
-          <div className="flex-1 flex flex-col gap-3 min-w-0 order-1">
+          <div className="flex-1 flex flex-col gap-3 min-w-0 order-2">
             {/* Large slide preview */}
             <div className="flex-shrink-0">
               <div id={`slide-preview-${selectedSlideIndex}`} className="w-full max-w-2xl mx-auto">
