@@ -8,18 +8,29 @@ interface SlidePreviewProps {
   totalSlides: number;
   coverStyle: "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame";
   slideIndex: number;
+  customBgColor?: string;
+  customTextColor?: string;
+  customAccentColor?: string;
 }
 
-const SlidePreview = ({ slide, template, slideNumber, totalSlides, coverStyle, slideIndex }: SlidePreviewProps) => {
+const SlidePreview = ({ slide, template, slideNumber, totalSlides, coverStyle, slideIndex, customBgColor, customTextColor, customAccentColor }: SlidePreviewProps) => {
   const isDark = template === "dark";
+  
+  const bgColor = customBgColor || (isDark ? undefined : undefined);
+  const textColor = customTextColor || undefined;
+  const accentColor = customAccentColor || (isDark ? undefined : undefined);
 
   return (
     <div className="w-full aspect-square rounded-lg overflow-hidden shadow-2xl" dir="rtl">
       <div
+        style={{
+          backgroundColor: bgColor,
+          color: textColor,
+        }}
         className={`w-full h-full p-12 flex flex-col justify-between relative ${
-          isDark
-            ? "bg-template-dark-bg text-template-dark-text"
-            : "bg-template-light-bg text-template-light-text"
+          !bgColor && (isDark ? "bg-template-dark-bg" : "bg-template-light-bg")
+        } ${
+          !textColor && (isDark ? "text-template-dark-text" : "text-template-light-text")
         } ${!isDark && "border-4 border-template-light-border"}`}
       >
         {/* Style Rendering (applied to all slides) */}
@@ -29,40 +40,65 @@ const SlidePreview = ({ slide, template, slideNumber, totalSlides, coverStyle, s
           </div>
         )}
         {coverStyle === "accent_block" && (
-          <div className={`absolute top-0 right-0 w-64 h-64 ${
-            isDark ? "bg-template-dark-accent" : "bg-template-light-accent"
-          } opacity-20 rounded-bl-full`} />
+          <div 
+            style={{ backgroundColor: accentColor }}
+            className={`absolute top-0 right-0 w-64 h-64 ${
+              !accentColor && (isDark ? "bg-template-dark-accent" : "bg-template-light-accent")
+            } opacity-20 rounded-bl-full`} 
+          />
         )}
         {coverStyle === "minimalist" && (
           <>
             {isDark ? (
-              <div className="absolute top-0 right-0 w-32 h-2 bg-template-dark-accent" />
+              <div 
+                style={{ backgroundColor: accentColor }}
+                className={`absolute top-0 right-0 w-32 h-2 ${!accentColor && "bg-template-dark-accent"}`} 
+              />
             ) : (
-              <div className="absolute top-12 right-12 w-24 h-3 bg-template-light-accent/30 -z-0" />
+              <div 
+                style={{ backgroundColor: accentColor }}
+                className={`absolute top-12 right-12 w-24 h-3 ${!accentColor && "bg-template-light-accent/30"} -z-0`} 
+              />
             )}
           </>
         )}
         {coverStyle === "gradient_overlay" && (
-          <div className={`absolute inset-0 ${
-            isDark 
-              ? "bg-gradient-to-br from-template-dark-accent/20 via-transparent to-transparent" 
-              : "bg-gradient-to-br from-template-light-accent/30 via-transparent to-transparent"
-          }`} />
+          <div 
+            style={{
+              background: accentColor 
+                ? `linear-gradient(to bottom right, ${accentColor}33, transparent, transparent)`
+                : undefined
+            }}
+            className={`absolute inset-0 ${
+              !accentColor && (isDark 
+                ? "bg-gradient-to-br from-template-dark-accent/20 via-transparent to-transparent" 
+                : "bg-gradient-to-br from-template-light-accent/30 via-transparent to-transparent")
+            }`} 
+          />
         )}
         {coverStyle === "geometric" && (
           <>
-            <div className={`absolute top-0 left-0 w-32 h-32 ${
-              isDark ? "border-t-4 border-l-4 border-template-dark-accent" : "border-t-4 border-l-4 border-template-light-accent"
-            }`} />
-            <div className={`absolute bottom-0 right-0 w-32 h-32 ${
-              isDark ? "border-b-4 border-r-4 border-template-dark-accent" : "border-b-4 border-r-4 border-template-light-accent"
-            }`} />
+            <div 
+              style={{ borderColor: accentColor }}
+              className={`absolute top-0 left-0 w-32 h-32 border-t-4 border-l-4 ${
+                !accentColor && (isDark ? "border-template-dark-accent" : "border-template-light-accent")
+              }`} 
+            />
+            <div 
+              style={{ borderColor: accentColor }}
+              className={`absolute bottom-0 right-0 w-32 h-32 border-b-4 border-r-4 ${
+                !accentColor && (isDark ? "border-template-dark-accent" : "border-template-light-accent")
+              }`} 
+            />
           </>
         )}
         {coverStyle === "bold_frame" && (
-          <div className={`absolute top-0 right-0 w-3 h-full ${
-            isDark ? "bg-template-dark-accent" : "bg-template-light-accent"
-          }`} />
+          <div 
+            style={{ backgroundColor: accentColor }}
+            className={`absolute top-0 right-0 w-3 h-full ${
+              !accentColor && (isDark ? "bg-template-dark-accent" : "bg-template-light-accent")
+            }`} 
+          />
         )}
 
         {/* Content */}
@@ -79,7 +115,11 @@ const SlidePreview = ({ slide, template, slideNumber, totalSlides, coverStyle, s
 
         {/* Slide number */}
         <div className="flex justify-between items-end">
-          <div className={`text-lg font-medium ${isDark ? "text-template-dark-accent" : "text-template-light-accent"}`} data-slide-number>
+          <div 
+            style={{ color: accentColor }}
+            className={`text-lg font-medium ${!accentColor && (isDark ? "text-template-dark-accent" : "text-template-light-accent")}`} 
+            data-slide-number
+          >
             {slideNumber}/{totalSlides}
           </div>
           <div className="text-xl font-semibold opacity-50">
