@@ -25,6 +25,9 @@ const EditCarousel = () => {
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(0);
   const [template, setTemplate] = useState<"dark" | "light">("dark");
   const [coverStyle, setCoverStyle] = useState<"minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame">("minimalist");
+  const [customBgColor, setCustomBgColor] = useState<string>("");
+  const [customTextColor, setCustomTextColor] = useState<string>("");
+  const [customAccentColor, setCustomAccentColor] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -78,6 +81,9 @@ const EditCarousel = () => {
       setSlides(parsedSlides as Slide[]);
       setTemplate(data.chosen_template as "dark" | "light");
       setCoverStyle((data.cover_style || "minimalist") as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame");
+      setCustomBgColor(data.custom_bg_color || "");
+      setCustomTextColor(data.custom_text_color || "");
+      setCustomAccentColor(data.custom_accent_color || "");
     } catch (error) {
       console.error("Error fetching carousel:", error);
       toast({
@@ -99,6 +105,9 @@ const EditCarousel = () => {
           slides: slides as any,
           chosen_template: template,
           cover_style: coverStyle,
+          custom_bg_color: customBgColor,
+          custom_text_color: customTextColor,
+          custom_accent_color: customAccentColor,
         })
         .eq("id", id);
 
@@ -413,6 +422,34 @@ const EditCarousel = () => {
                 <SelectItem value="light">תבנית בהירה</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={customBgColor} onValueChange={setCustomBgColor}>
+              <SelectTrigger className="w-32" dir="rtl">
+                <SelectValue placeholder="שינוי רקע" />
+              </SelectTrigger>
+              <SelectContent align="end" dir="rtl">
+                <SelectItem value="">ברירת מחדל</SelectItem>
+                <SelectItem value="#1a1a2e">כחול כהה</SelectItem>
+                <SelectItem value="#0f172a">כחול-שחור</SelectItem>
+                <SelectItem value="#1e293b">אפור כהה</SelectItem>
+                <SelectItem value="#7f1d1d">אדום כהה</SelectItem>
+                <SelectItem value="#064e3b">ירוק כהה</SelectItem>
+                <SelectItem value="#ffffff">לבן</SelectItem>
+                <SelectItem value="#f8fafc">אפור בהיר</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={customTextColor} onValueChange={setCustomTextColor}>
+              <SelectTrigger className="w-32" dir="rtl">
+                <SelectValue placeholder="שינוי טקסט" />
+              </SelectTrigger>
+              <SelectContent align="end" dir="rtl">
+                <SelectItem value="">ברירת מחדל</SelectItem>
+                <SelectItem value="#ffffff">לבן</SelectItem>
+                <SelectItem value="#f8fafc">אפור בהיר</SelectItem>
+                <SelectItem value="#e2e8f0">כסף</SelectItem>
+                <SelectItem value="#1e293b">כהה</SelectItem>
+                <SelectItem value="#0f172a">שחור</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={coverStyle} onValueChange={(value) => setCoverStyle(value as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame")}>
               <SelectTrigger className="w-40" dir="rtl">
                 <SelectValue />
@@ -424,6 +461,22 @@ const EditCarousel = () => {
                 <SelectItem value="gradient_overlay">גרדיאנט</SelectItem>
                 <SelectItem value="geometric">גיאומטרי</SelectItem>
                 <SelectItem value="bold_frame">מסגרת בולטת</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={customAccentColor} onValueChange={setCustomAccentColor}>
+              <SelectTrigger className="w-32" dir="rtl">
+                <SelectValue placeholder="צבע עיצוב" />
+              </SelectTrigger>
+              <SelectContent align="end" dir="rtl">
+                <SelectItem value="">ברירת מחדל</SelectItem>
+                <SelectItem value="#3b82f6">כחול</SelectItem>
+                <SelectItem value="#8b5cf6">סגול</SelectItem>
+                <SelectItem value="#ec4899">ורוד</SelectItem>
+                <SelectItem value="#f59e0b">כתום</SelectItem>
+                <SelectItem value="#10b981">ירוק</SelectItem>
+                <SelectItem value="#ef4444">אדום</SelectItem>
+                <SelectItem value="#06b6d4">תכלת</SelectItem>
+                <SelectItem value="#f97316">כתום בוהק</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={handleSave} variant="outline" size="sm">
@@ -510,6 +563,9 @@ const EditCarousel = () => {
                   totalSlides={slides.length}
                   coverStyle={coverStyle}
                   slideIndex={selectedSlideIndex}
+                  customBgColor={customBgColor}
+                  customTextColor={customTextColor}
+                  customAccentColor={customAccentColor}
                 />
               </div>
             </div>
