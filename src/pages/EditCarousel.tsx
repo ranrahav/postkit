@@ -32,6 +32,7 @@ const EditCarousel = () => {
   const [oldSlideData, setOldSlideData] = useState<{ title: string; body: string } | null>(null);
   const [newSlideData, setNewSlideData] = useState<{ title: string; body: string } | null>(null);
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -282,6 +283,41 @@ const EditCarousel = () => {
     setSlides(newSlides.map((slide, i) => ({ ...slide, index: i })));
   };
 
+  const handleAddBlankSlide = () => {
+    const newSlide: Slide = {
+      index: slides.length,
+      title: "",
+      body: "",
+    };
+    setSlides([...slides, newSlide]);
+    setSelectedSlideIndex(slides.length);
+    toast({
+      title: "שקופית חדשה נוספה",
+      description: "ניתן לערוך את התוכן כעת",
+    });
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    
+    const newSlides = [...slides];
+    const draggedSlide = newSlides[draggedIndex];
+    newSlides.splice(draggedIndex, 1);
+    newSlides.splice(index, 0, draggedSlide);
+    
+    setSlides(newSlides.map((slide, i) => ({ ...slide, index: i })));
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   const updateSlide = (field: "title" | "body", value: string) => {
     const newSlides = [...slides];
     newSlides[selectedSlideIndex] = {
@@ -407,21 +443,35 @@ const EditCarousel = () => {
         <div className="flex gap-3 max-w-7xl mx-auto" style={{ height: 'calc(100vh - 120px)' }}>
           {/* Slide list - left side in Hebrew RTL */}
           <Card className="w-64 p-3 space-y-2 overflow-y-auto flex-shrink-0 order-1">
-            <h3 className="font-semibold mb-3">שקופיות ({slides.length})</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold">שקופיות ({slides.length})</h3>
+              <Button
+                onClick={handleAddBlankSlide}
+                variant="outline"
+                size="sm"
+                className="h-7 px-2"
+              >
+                + חדשה
+              </Button>
+            </div>
             {slides.map((slide, index) => (
               <div
                 key={index}
-                className={`p-2 rounded-lg border cursor-pointer transition-all ${
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                className={`p-2 rounded-lg border cursor-move transition-all ${
                   selectedSlideIndex === index
                     ? "bg-accent/10 border-accent"
                     : "hover:bg-muted"
-                }`}
+                } ${draggedIndex === index ? "opacity-50" : ""}`}
                 onClick={() => setSelectedSlideIndex(index)}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-muted-foreground mb-1">שקופית {index + 1}</div>
-                    <div className="text-sm font-medium truncate">{slide.title}</div>
+                    <div className="text-sm font-medium truncate">{slide.title || "שקופית ריקה"}</div>
                   </div>
                   <div className="flex gap-1">
                     <button
