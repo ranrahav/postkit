@@ -93,6 +93,10 @@ const Create = () => {
           chosen_template: "dark",
           cover_style: coverStyle,
           carousel_name: data.slides[0]?.title || "קרוסלה ללא שם",
+          background_color: "#000000",
+          text_color: "#FFFFFF",
+          accent_color: "#FFFFFF",
+          aspect_ratio: "1:1",
         })
         .select()
         .single();

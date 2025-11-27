@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import SlidePreview from "@/components/SlidePreview";
 import RegenerateModal from "@/components/RegenerateModal";
 import ExportModal from "@/components/ExportModal";
+import ColorPicker from "@/components/ui/color-picker";
 
 interface Slide {
   index: number;
@@ -25,6 +26,10 @@ const EditCarousel = () => {
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(0);
   const [template, setTemplate] = useState<"dark" | "light">("dark");
   const [coverStyle, setCoverStyle] = useState<"minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame">("minimalist");
+  const [backgroundColor, setBackgroundColor] = useState("#000000");
+  const [textColor, setTextColor] = useState("#FFFFFF");
+  const [aspectRatio, setAspectRatio] = useState<"1:1" | "4:5">("1:1");
+  const [accentColor, setAccentColor] = useState("#FFFFFF");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -39,6 +44,16 @@ const EditCarousel = () => {
   useEffect(() => {
     fetchCarousel();
   }, [id]);
+
+  useEffect(() => {
+    if (template === "dark") {
+      setBackgroundColor("#000000");
+      setTextColor("#FFFFFF");
+    } else {
+      setBackgroundColor("#FFFFFF");
+      setTextColor("#000000");
+    }
+  }, [template]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -78,6 +93,10 @@ const EditCarousel = () => {
       setSlides(parsedSlides as Slide[]);
       setTemplate(data.chosen_template as "dark" | "light");
       setCoverStyle((data.cover_style || "minimalist") as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame");
+      setBackgroundColor(data.background_color || (data.chosen_template === 'dark' ? '#000000' : '#FFFFFF'));
+      setTextColor(data.text_color || (data.chosen_template === 'dark' ? '#FFFFFF' : '#000000'));
+      setAspectRatio(data.aspect_ratio || '1:1');
+      setAccentColor(data.accent_color || (data.chosen_template === 'dark' ? '#FFFFFF' : '#000000'));
     } catch (error) {
       console.error("Error fetching carousel:", error);
       toast({
@@ -99,6 +118,10 @@ const EditCarousel = () => {
           slides: slides as any,
           chosen_template: template,
           cover_style: coverStyle,
+          background_color: backgroundColor,
+          text_color: textColor,
+          aspect_ratio: aspectRatio,
+          accent_color: accentColor,
         })
         .eq("id", id);
 
@@ -426,6 +449,18 @@ const EditCarousel = () => {
                 <SelectItem value="bold_frame">מסגרת בולטת</SelectItem>
               </SelectContent>
             </Select>
+            <ColorPicker color={backgroundColor} setColor={setBackgroundColor} title="שינוי רקע" />
+            <ColorPicker color={textColor} setColor={setTextColor} title="שינוי טקסט" />
+            <ColorPicker color={accentColor} setColor={setAccentColor} title="שינוי צבע עיצוב" />
+            <Select value={aspectRatio} onValueChange={(value: "1:1" | "4:5") => setAspectRatio(value)}>
+              <SelectTrigger className="w-28" dir="rtl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end" dir="rtl">
+                <SelectItem value="1:1">1:1</SelectItem>
+                <SelectItem value="4:5">4:5</SelectItem>
+              </SelectContent>
+            </Select>
             <Button onClick={handleSave} variant="outline" size="sm">
               שמור
             </Button>
@@ -510,6 +545,10 @@ const EditCarousel = () => {
                   totalSlides={slides.length}
                   coverStyle={coverStyle}
                   slideIndex={selectedSlideIndex}
+                  backgroundColor={backgroundColor}
+                  textColor={textColor}
+                  aspectRatio={aspectRatio}
+                  accentColor={accentColor}
                 />
               </div>
             </div>

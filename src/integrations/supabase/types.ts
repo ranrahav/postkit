@@ -16,6 +16,9 @@ export type Database = {
     Tables: {
       carousels: {
         Row: {
+          accent_color: string | null
+          aspect_ratio: string | null
+          background_color: string | null
           carousel_name: string | null
           chosen_template: string
           cover_style: string
@@ -23,10 +26,14 @@ export type Database = {
           id: string
           original_text: string
           slides: Json
+          text_color: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          accent_color?: string | null
+          aspect_ratio?: string | null
+          background_color?: string | null
           carousel_name?: string | null
           chosen_template?: string
           cover_style?: string
@@ -34,10 +41,14 @@ export type Database = {
           id?: string
           original_text: string
           slides?: Json
+          text_color?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          accent_color?: string | null
+          aspect_ratio?: string | null
+          background_color?: string | null
           carousel_name?: string | null
           chosen_template?: string
           cover_style?: string
@@ -45,6 +56,7 @@ export type Database = {
           id?: string
           original_text?: string
           slides?: Json
+          text_color?: string | null
           updated_at?: string
           user_id?: string
         }
