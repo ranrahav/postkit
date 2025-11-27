@@ -95,7 +95,7 @@ const EditCarousel = () => {
       setCoverStyle((data.cover_style || "minimalist") as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame");
       setBackgroundColor(data.background_color || (data.chosen_template === 'dark' ? '#000000' : '#FFFFFF'));
       setTextColor(data.text_color || (data.chosen_template === 'dark' ? '#FFFFFF' : '#000000'));
-      setAspectRatio(data.aspect_ratio || '1:1');
+      setAspectRatio((data.aspect_ratio as "1:1" | "4:5") || '1:1');
       setAccentColor(data.accent_color || (data.chosen_template === 'dark' ? '#FFFFFF' : '#000000'));
     } catch (error) {
       console.error("Error fetching carousel:", error);
