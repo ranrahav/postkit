@@ -1,22 +1,53 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': 'http://localhost:8080',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// Define allowed origins
+const allowedOrigins = [
+  'http://localhost:8080',
+  'https://postkit-five.vercel.app',
+  'https://postkit-git-main-ranrahavs-projects.vercel.app',
+  'https://postkit-*.vercel.app' // This is a wildcard for Vercel preview deployments
+];
+
+// Function to get CORS headers
+const getCorsHeaders = (origin: string) => {
+  // Check if the origin is in the allowed list
+  const isAllowed = allowedOrigins.some(allowedOrigin => 
+    allowedOrigin.includes('*') 
+      ? origin.match(new RegExp('^' + allowedOrigin.replace('*', '.*') + '$'))
+      : origin === allowedOrigin
+  );
+
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400', // 24 hours
+  };
 };
 
 serve(async (req) => {
+  // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    const origin = req.headers.get('origin') || '';
+    return new Response(null, { 
+      headers: getCorsHeaders(origin)
+    });
   }
 
   try {
     const { text, style = 'Professional', language = 'he' } = await req.json();
 
     if (!text || text.trim().length === 0) {
+      const origin = req.headers.get('origin') || '';
       return new Response(
         JSON.stringify({ error: 'Text is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 400, 
+          headers: { 
+            ...getCorsHeaders(origin), 
+            'Content-Type': 'application/json' 
+          } 
+        }
       );
     }
 
@@ -28,15 +59,17 @@ serve(async (req) => {
       slides = generateSlidesHeuristic(text);
     }
 
+    const origin = req.headers.get('origin') || '';
     return new Response(
       JSON.stringify({ slides }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error generating slides:', error);
+    const origin = req.headers.get('origin') || '';
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' } }
     );
   }
 });
