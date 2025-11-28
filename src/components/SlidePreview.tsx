@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+
 interface SlidePreviewProps {
   slide: {
     title: string;
@@ -12,6 +14,10 @@ interface SlidePreviewProps {
   textColor?: string;
   aspectRatio?: "1:1" | "4:5";
   accentColor?: string;
+  onUpdateSlide: (updates: { title?: string; body?: string }) => void;
+  isEditing: boolean;
+  onEditStart: () => void;
+  onEditEnd: () => void;
 }
 
 const SlidePreview = ({ 
@@ -23,14 +29,53 @@ const SlidePreview = ({
   backgroundColor, 
   textColor, 
   aspectRatio, 
-  accentColor 
+  accentColor,
+  onUpdateSlide,
+  isEditing,
+  onEditStart,
+  onEditEnd
 }: SlidePreviewProps) => {
+  const [editingField, setEditingField] = useState<'title' | 'body' | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  useEffect(() => {
+    if (!isEditing) {
+      setEditingField(null);
+    }
+  }, [isEditing]);
+
+  const handleFieldClick = (field: 'title' | 'body', value: string) => {
+    if (!isEditing) return;
+    onEditStart();
+    setEditingField(field);
+    setEditValue(value);
+  };
+
+  const handleSave = () => {
+    if (editingField && editValue.trim() !== '') {
+      onUpdateSlide({ [editingField]: editValue });
+    }
+    setEditingField(null);
+    onEditEnd();
+  };
 
   const finalAccentColor = accentColor || (template === 'dark' ? '#FFFFFF' : '#000000');
   const aspectRatioClass = aspectRatio === '4:5' ? 'aspect-[4/5]' : 'aspect-square';
 
+  const handleContainerClick = (e: React.MouseEvent) => {
+    // Only handle the click if we're not clicking on an interactive element
+    const target = e.target as HTMLElement;
+    if (isEditing && !target.closest('input, textarea, button, a, [role="button"]')) {
+      onEditStart();
+    }
+  };
+
   return (
-    <div className={`w-full ${aspectRatioClass} rounded-lg overflow-hidden shadow-2xl`} dir="rtl">
+    <div 
+      className={`w-full ${aspectRatioClass} rounded-lg overflow-hidden shadow-2xl`} 
+      dir="rtl"
+      onClick={handleContainerClick}
+    >
       <div
         className="w-full h-full p-12 flex flex-col justify-between relative"
         style={{
@@ -86,13 +131,48 @@ const SlidePreview = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col justify-center space-y-8 relative z-10">
-          <h2 className={`text-5xl font-bold leading-tight ${coverStyle === "big_number" ? "text-6xl" : ""}`} data-slide-title>
-            {slide.title}
-          </h2>
-          <p className="text-2xl leading-relaxed opacity-90" data-slide-body>
-            {slide.body}
-          </p>
+        <div className="flex-1 flex flex-col justify-center relative z-10">
+          {editingField === 'title' ? (
+            <input
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+              className="text-4xl font-bold mb-4 bg-transparent border-b border-gray-400 focus:outline-none w-full"
+              autoFocus
+            />
+          ) : (
+            <h2 
+              className="text-4xl font-bold mb-4 cursor-text select-text"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleFieldClick('title', slide.title);
+              }}
+            >
+              {slide.title}
+            </h2>
+          )}
+
+          {editingField === 'body' ? (
+            <textarea
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSave}
+              className="text-xl leading-relaxed bg-transparent border-b border-gray-400 focus:outline-none resize-none w-full min-h-[100px]"
+              autoFocus
+            />
+          ) : (
+            <p 
+              className="text-xl leading-relaxed whitespace-pre-line cursor-text select-text"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleFieldClick('body', slide.body);
+              }}
+            >
+              {slide.body}
+            </p>
+          )}
         </div>
 
         {/* Slide number */}

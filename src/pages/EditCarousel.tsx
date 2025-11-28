@@ -38,6 +38,7 @@ const EditCarousel = () => {
   const [newSlideData, setNewSlideData] = useState<{ title: string; body: string } | null>(null);
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [editingSlideIndex, setEditingSlideIndex] = useState<number>(0); // Start with first slide editable
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -60,10 +61,14 @@ const EditCarousel = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") {
         // Hebrew: next slide
-        setSelectedSlideIndex((prev) => Math.min(prev + 1, slides.length - 1));
+        const newIndex = Math.min(selectedSlideIndex + 1, slides.length - 1);
+        setSelectedSlideIndex(newIndex);
+        setEditingSlideIndex(newIndex);
       } else if (e.key === "ArrowRight") {
         // Hebrew: previous slide
-        setSelectedSlideIndex((prev) => Math.max(prev - 1, 0));
+        const newIndex = Math.max(selectedSlideIndex - 1, 0);
+        setSelectedSlideIndex(newIndex);
+        setEditingSlideIndex(newIndex);
       }
     };
 
@@ -501,7 +506,10 @@ const EditCarousel = () => {
                     ? "bg-accent/10 border-accent"
                     : "hover:bg-muted"
                 } ${draggedIndex === index ? "opacity-50" : ""}`}
-                onClick={() => setSelectedSlideIndex(index)}
+                onClick={() => {
+                  setSelectedSlideIndex(index);
+                  setEditingSlideIndex(index);
+                }}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
@@ -538,18 +546,29 @@ const EditCarousel = () => {
             {/* Large slide preview */}
             <div className="flex-shrink-0">
               <div id={`slide-preview-${selectedSlideIndex}`} className="w-full max-w-2xl mx-auto">
-                <SlidePreview
-                  slide={selectedSlide}
-                  template={template}
-                  slideNumber={selectedSlideIndex + 1}
-                  totalSlides={slides.length}
-                  coverStyle={coverStyle}
-                  slideIndex={selectedSlideIndex}
-                  backgroundColor={backgroundColor}
-                  textColor={textColor}
-                  aspectRatio={aspectRatio}
-                  accentColor={accentColor}
-                />
+                <div onClick={(e) => e.stopPropagation()}>
+                  <SlidePreview
+                    key={selectedSlideIndex}
+                    slide={selectedSlide}
+                    template={template}
+                    slideNumber={selectedSlideIndex + 1}
+                    totalSlides={slides.length}
+                    coverStyle={coverStyle}
+                    backgroundColor={backgroundColor}
+                    textColor={textColor}
+                    aspectRatio={aspectRatio}
+                    accentColor={accentColor}
+                    slideIndex={selectedSlideIndex}
+                    isEditing={editingSlideIndex === selectedSlideIndex}
+                    onEditStart={() => setEditingSlideIndex(selectedSlideIndex)}
+                    onEditEnd={() => {}} // Don't disable editing when clicking away
+                    onUpdateSlide={(updates) => {
+                      const newSlides = [...slides];
+                      newSlides[selectedSlideIndex] = { ...newSlides[selectedSlideIndex], ...updates };
+                      setSlides(newSlides);
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
