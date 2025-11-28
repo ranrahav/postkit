@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, Copy } from "lucide-react";
+import { debounce } from "lodash";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SlidePreview from "@/components/SlidePreview";
 import RegenerateModal from "@/components/RegenerateModal";
@@ -39,6 +40,8 @@ const EditCarousel = () => {
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [editingSlideIndex, setEditingSlideIndex] = useState<number>(0); // Start with first slide editable
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -115,7 +118,10 @@ const EditCarousel = () => {
     }
   };
 
-  const handleSave = async () => {
+  const saveCarousel = useCallback(async () => {
+    if (!id) return;
+    
+    setIsSaving(true);
     try {
       const { error } = await supabase
         .from("carousels")
@@ -127,11 +133,58 @@ const EditCarousel = () => {
           text_color: textColor,
           aspect_ratio: aspectRatio,
           accent_color: accentColor,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", id);
 
       if (error) throw error;
 
+      return true;
+    } catch (error) {
+      console.error("Error saving carousel:", error);
+      throw error;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [id, slides, template, coverStyle, backgroundColor, textColor, aspectRatio, accentColor]);
+
+  const debouncedSave = useCallback(
+    debounce(async () => {
+      try {
+        await saveCarousel();
+        toast({
+          title: "נשמר",
+          description: "השינויים נשמרו אוטומטית",
+          duration: 2000,
+        });
+      } catch (error) {
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן לשמור את השינויים",
+          variant: "destructive",
+        });
+      }
+    }, 1000),
+    [saveCarousel, toast]
+  );
+
+  // Auto-save when dependencies change
+  useEffect(() => {
+    if (id && slides.length > 0) {
+      debouncedSave();
+    }
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      debouncedSave.cancel();
+    };
+  }, [id, slides, template, coverStyle, backgroundColor, textColor, aspectRatio, accentColor, debouncedSave]);
+
+  const handleSave = async () => {
+    try {
+      await saveCarousel();
       toast({
         title: "נשמר בהצלחה!",
         description: "השינויים נשמרו",
@@ -346,13 +399,22 @@ const EditCarousel = () => {
     setDraggedIndex(null);
   };
 
-  const updateSlide = (field: "title" | "body", value: string) => {
+  const handleUpdateSlide = (index: number, updates: Partial<Slide>) => {
     const newSlides = [...slides];
-    newSlides[selectedSlideIndex] = {
-      ...newSlides[selectedSlideIndex],
-      [field]: value,
-    };
+    newSlides[index] = { ...newSlides[index], ...updates };
     setSlides(newSlides);
+    
+    // Trigger a save after a short delay
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      debouncedSave();
+    }, 500);
+  };
+
+  const updateSlide = (field: "title" | "body", value: string) => {
+    handleUpdateSlide(selectedSlideIndex, { [field]: value });
   };
 
   const handleRegenerateSlide = async (index: number) => {
@@ -466,8 +528,18 @@ const EditCarousel = () => {
                 <SelectItem value="4:5">4:5</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={handleSave} variant="outline" size="sm">
-              שמור
+            <Button 
+              onClick={handleSave} 
+              variant="outline" 
+              size="sm"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  שומר...
+                </>
+              ) : 'שמור'}
             </Button>
             <Button onClick={() => setExportModalOpen(true)} disabled={exporting} size="sm">
               ייצא
@@ -563,9 +635,7 @@ const EditCarousel = () => {
                     onEditStart={() => setEditingSlideIndex(selectedSlideIndex)}
                     onEditEnd={() => {}} // Don't disable editing when clicking away
                     onUpdateSlide={(updates) => {
-                      const newSlides = [...slides];
-                      newSlides[selectedSlideIndex] = { ...newSlides[selectedSlideIndex], ...updates };
-                      setSlides(newSlides);
+                      handleUpdateSlide(selectedSlideIndex, updates);
                     }}
                   />
                 </div>
