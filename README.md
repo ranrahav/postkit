@@ -1,6 +1,6 @@
-# Welcome to your Lovable project
+# PostKit - Create Beautiful Carousels
 
-## Project info
+## Project Information
 
 **URL**: https://lovable.dev/projects/85b450d8-0a11-432d-88fd-19fc4a6d18fc
 
