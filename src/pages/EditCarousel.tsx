@@ -10,7 +10,7 @@ import { Loader2, Trash2, Copy } from "lucide-react";
 import { debounce } from "lodash";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SlidePreview from "@/components/SlidePreview";
-import RegenerateModal from "@/components/RegenerateModal";
+// import RegenerateModal from "@/components/RegenerateModal";
 import ExportModal from "@/components/ExportModal";
 import ColorPicker from "@/components/ui/color-picker";
 
@@ -642,56 +642,13 @@ const EditCarousel = () => {
               </div>
             </div>
 
-            {/* Editor panel below preview */}
-            <Card className="p-4 space-y-3 overflow-y-auto flex-1">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold">עריכת שקופית {selectedSlideIndex + 1}</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleRegenerateSlide(selectedSlideIndex)}
-                >
-                  יצירה מחדש עם AI
-                </Button>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">כותרת</label>
-                  <Textarea
-                    value={selectedSlide.title}
-                    onChange={(e) => updateSlide("title", e.target.value)}
-                    placeholder="כותרת השקופית"
-                    className="min-h-[120px] resize-none text-base"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">תוכן</label>
-                  <Textarea
-                    value={selectedSlide.body}
-                    onChange={(e) => updateSlide("body", e.target.value)}
-                    placeholder="תוכן השקופית"
-                    className="min-h-[120px] resize-none text-base"
-                  />
-                </div>
-              </div>
-            </Card>
+            {/* Removed slide editing panel in favor of inline editing */}
+            <div className="h-4"></div>
           </div>
         </div>
       </div>
 
-      {/* Regenerate Modal */}
-      {oldSlideData && newSlideData && (
-        <RegenerateModal
-          open={regenerateModalOpen}
-          onOpenChange={setRegenerateModalOpen}
-          oldSlide={oldSlideData}
-          newSlide={newSlideData}
-          onAccept={handleAcceptRegeneration}
-          onReject={handleRejectRegeneration}
-        />
-      )}
+      {/* Regenerate Modal - Temporarily hidden */}
 
       {/* Export Modal */}
       <ExportModal
