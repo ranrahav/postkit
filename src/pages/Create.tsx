@@ -96,7 +96,7 @@ const Create = () => {
           background_color: "#000000",
           text_color: "#FFFFFF",
           accent_color: "#FFFFFF",
-          aspect_ratio: "1:1",
+          aspect_ratio: "4:5",
         })
         .select()
         .single();

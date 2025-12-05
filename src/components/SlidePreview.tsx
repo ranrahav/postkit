@@ -18,6 +18,7 @@ interface SlidePreviewProps {
   isEditing: boolean;
   onEditStart: () => void;
   onEditEnd: () => void;
+  showSlideNumber?: boolean;
 }
 
 const SlidePreview = ({ 
@@ -33,7 +34,8 @@ const SlidePreview = ({
   onUpdateSlide,
   isEditing,
   onEditStart,
-  onEditEnd
+  onEditEnd,
+  showSlideNumber = true
 }: SlidePreviewProps) => {
   const [editingField, setEditingField] = useState<'title' | 'body' | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -176,14 +178,16 @@ const SlidePreview = ({
         </div>
 
         {/* Slide number */}
-        <div className="flex justify-between items-end">
-          <div className="text-lg font-medium" style={{ color: finalAccentColor }} data-slide-number>
-            {slideNumber}/{totalSlides}
+        {showSlideNumber && (
+          <div className="flex justify-between items-end">
+            <div className="text-lg font-medium" style={{ color: finalAccentColor }} data-slide-number>
+              {slideNumber}/{totalSlides}
+            </div>
+            <div className="text-xl font-semibold opacity-50">
+              SlideMint
+            </div>
           </div>
-          <div className="text-xl font-semibold opacity-50">
-            SlideMint
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

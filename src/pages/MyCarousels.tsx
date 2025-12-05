@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -105,50 +105,99 @@ const MyCarousels = () => {
       const zip = new JSZip();
       const slides = typeof carousel.slides === 'string' ? JSON.parse(carousel.slides) : carousel.slides;
       
-      // Create temporary container for rendering
+      // Base logical size for rendering (export will be upscaled via pixelRatio)
+      const baseWidth = 540; // will become 1080 with pixelRatio: 2
+      const baseHeight = carousel.aspect_ratio === '4:5' ? 675 : 540;
+      
+      // Create temporary container for rendering (acts as parent only)
       const container = document.createElement('div');
       container.style.position = 'fixed';
+      container.style.top = '0px';
       container.style.left = '-9999px';
-      container.style.width = '1080px';
-      container.style.height = '1080px';
       document.body.appendChild(container);
 
       // Export each slide
       for (let i = 0; i < slides.length; i++) {
-        // Import SlidePreview and React dynamically
-        const { default: SlidePreview } = await import('@/components/SlidePreview');
-        const { createRoot } = await import('react-dom/client');
-        
-        const root = createRoot(container);
-        root.render(
-          SlidePreview({
-            slide: slides[i],
-            template: carousel.chosen_template,
-            slideNumber: i + 1,
-            totalSlides: slides.length,
-            coverStyle: carousel.cover_style || "minimalist",
-            slideIndex: i,
-          })
-        );
+        let root: any = null;
+        let slideContainer: HTMLDivElement | null = null;
+        try {
+          // Import SlidePreview and React dynamically
+          const { default: SlidePreview } = await import('@/components/SlidePreview');
+          const { createRoot } = await import('react-dom/client');
+          
+          // Create fresh container for each slide at base logical size
+          slideContainer = document.createElement('div');
+          slideContainer.style.position = 'fixed';
+          slideContainer.style.left = '-9999px';
+          slideContainer.style.width = `${baseWidth}px`;
+          slideContainer.style.height = `${baseHeight}px`;
+          slideContainer.style.fontSize = '16px';
+          slideContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+          container.appendChild(slideContainer);
+          
+          root = createRoot(slideContainer);
+          root.render(React.createElement(SlidePreview, {
+              slide: slides[i],
+              template: carousel.chosen_template,
+              coverStyle: carousel.cover_style || "minimalist",
+              backgroundColor: carousel.background_color,
+              textColor: carousel.text_color,
+              aspectRatio: carousel.aspect_ratio,
+              accentColor: carousel.accent_color,
+              slideIndex: i,
+              isEditing: false,
+              onEditStart: () => {},
+              onEditEnd: () => {},
+              onUpdateSlide: () => {},
+              slideNumber: i + 1,
+              totalSlides: slides.length,
+              showSlideNumber: false,
+            })
+          );
 
-        // Wait for render
-        await new Promise(resolve => setTimeout(resolve, 500));
+          // Wait for render
+          await new Promise(resolve => setTimeout(resolve, 200));
 
-        const dataUrl = await toPng(container.firstChild as HTMLElement, {
-          width: 1080,
-          height: 1080,
-          pixelRatio: 2,
-        });
-        
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
-        const carouselName = carousel.carousel_name || "carousel";
-        zip.file(`${carouselName}-slide-${i + 1}.png`, blob);
-        
-        root.unmount();
+          const dataUrl = await toPng(slideContainer.firstChild as HTMLElement, {
+            pixelRatio: 2,
+          });
+          
+          const response = await fetch(dataUrl);
+          const blob = await response.blob();
+          const carouselName = carousel.carousel_name || "carousel";
+          zip.file(`${carouselName}-slide-${i + 1}.png`, blob);
+          
+          root.unmount();
+          if (slideContainer.parentNode) {
+            try {
+              document.body.removeChild(slideContainer);
+            } catch (e) {
+              console.error(`Error removing slide container: ${e.message}`, e.stack);
+            }
+          }
+        } catch (error) {
+          console.error(`Error exporting slide ${i + 1}:`, error.message, error.stack);
+          // Cleanup on error
+          if (root) {
+            try {
+              root.unmount();
+            } catch (e) {
+              console.error(`Error unmounting root: ${e.message}`, e.stack);
+            }
+          }
+          if (slideContainer && slideContainer.parentNode) {
+            try {
+              document.body.removeChild(slideContainer);
+            } catch (e) {
+              console.error(`Error removing slide container: ${e.message}`, e.stack);
+            }
+          }
+        }
       }
       
-      document.body.removeChild(container);
+      if (container.parentNode) {
+        document.body.removeChild(container);
+      }
       
       // Generate ZIP
       const zipBlob = await zip.generateAsync({ type: 'blob' });

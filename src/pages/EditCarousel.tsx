@@ -10,6 +10,7 @@ import { Loader2, Trash2, Copy } from "lucide-react";
 import { debounce } from "lodash";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SlidePreview from "@/components/SlidePreview";
+import LinkedInCarouselPreview from "@/components/LinkedInCarouselPreview";
 // import RegenerateModal from "@/components/RegenerateModal";
 import ExportModal from "@/components/ExportModal";
 import ColorPicker from "@/components/ui/color-picker";
@@ -29,7 +30,7 @@ const EditCarousel = () => {
   const [coverStyle, setCoverStyle] = useState<"minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame">("minimalist");
   const [backgroundColor, setBackgroundColor] = useState("#000000");
   const [textColor, setTextColor] = useState("#FFFFFF");
-  const [aspectRatio, setAspectRatio] = useState<"1:1" | "4:5">("1:1");
+  const [aspectRatio, setAspectRatio] = useState<"1:1" | "4:5">("4:5");
   const [accentColor, setAccentColor] = useState("#FFFFFF");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -62,13 +63,13 @@ const EditCarousel = () => {
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") {
-        // Hebrew: next slide
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        // Next slide
         const newIndex = Math.min(selectedSlideIndex + 1, slides.length - 1);
         setSelectedSlideIndex(newIndex);
         setEditingSlideIndex(newIndex);
-      } else if (e.key === "ArrowRight") {
-        // Hebrew: previous slide
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        // Previous slide
         const newIndex = Math.max(selectedSlideIndex - 1, 0);
         setSelectedSlideIndex(newIndex);
         setEditingSlideIndex(newIndex);
@@ -77,7 +78,7 @@ const EditCarousel = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [slides.length]);
+  }, [selectedSlideIndex, slides.length]);
 
   const fetchCarousel = async () => {
     try {
@@ -103,7 +104,7 @@ const EditCarousel = () => {
       setCoverStyle((data.cover_style || "minimalist") as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame");
       setBackgroundColor(data.background_color || (data.chosen_template === 'dark' ? '#000000' : '#FFFFFF'));
       setTextColor(data.text_color || (data.chosen_template === 'dark' ? '#FFFFFF' : '#000000'));
-      setAspectRatio((data.aspect_ratio as "1:1" | "4:5") || '1:1');
+      setAspectRatio((data.aspect_ratio as "1:1" | "4:5") || '4:5');
       setAccentColor(data.accent_color || (data.chosen_template === 'dark' ? '#FFFFFF' : '#000000'));
     } catch (error) {
       console.error("Error fetching carousel:", error);
@@ -204,60 +205,95 @@ const EditCarousel = () => {
     try {
       const { toPng } = await import('html-to-image');
       const JSZip = (await import('jszip')).default;
+      const { createRoot } = await import('react-dom/client');
       
       const zip = new JSZip();
       const carouselName = carousel?.carousel_name || "carousel";
       let failedSlides = 0;
       
-      // Create hidden container for rendering all slides
-      const hiddenContainer = document.createElement('div');
-      hiddenContainer.style.position = 'fixed';
-      hiddenContainer.style.left = '-9999px';
-      hiddenContainer.style.top = '0';
-      document.body.appendChild(hiddenContainer);
+      // Base logical size for rendering (export will be upscaled via pixelRatio)
+      const baseWidth = 540; // will become 1080 with pixelRatio: 2
+      const baseHeight = aspectRatio === "4:5" ? 675 : 540; // 4:5 -> 540x675, 1:1 -> 540x540
       
       for (let i = 0; i < slides.length; i++) {
+        let root: any = null;
+        let hiddenContainer: HTMLDivElement | null = null;
         try {
-          // Clone the current slide preview and render it
-          const originalElement = document.getElementById(`slide-preview-${selectedSlideIndex}`);
-          if (originalElement) {
-            const clonedElement = originalElement.cloneNode(true) as HTMLElement;
-            clonedElement.id = `temp-slide-${i}`;
-            hiddenContainer.appendChild(clonedElement);
-            
-            // Update the cloned element with the correct slide data
-            const slide = slides[i];
-            const titleElement = clonedElement.querySelector('[data-slide-title]');
-            const bodyElement = clonedElement.querySelector('[data-slide-body]');
-            const numberElement = clonedElement.querySelector('[data-slide-number]');
-            
-            if (titleElement) titleElement.textContent = slide.title;
-            if (bodyElement) bodyElement.textContent = slide.body;
-            if (numberElement) numberElement.textContent = `${i + 1}`;
-            
-            // Wait a bit for render
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            const dataUrl = await toPng(clonedElement, {
-              width: 1080,
-              height: 1080,
-              pixelRatio: 2,
-            });
-            
-            const response = await fetch(dataUrl);
-            const blob = await response.blob();
-            zip.file(`${carouselName}-slide-${i + 1}.png`, blob);
-            
-            hiddenContainer.removeChild(clonedElement);
+          // Create fresh container for each slide at base logical size
+          hiddenContainer = document.createElement('div');
+          hiddenContainer.style.position = 'fixed';
+          hiddenContainer.style.left = '-9999px';
+          hiddenContainer.style.top = '0';
+          hiddenContainer.style.width = `${baseWidth}px`;
+          hiddenContainer.style.height = `${baseHeight}px`;
+          hiddenContainer.style.fontSize = '16px';
+          hiddenContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+          document.body.appendChild(hiddenContainer);
+          
+          root = createRoot(hiddenContainer);
+          
+          // Render just the slide without the carousel wrapper
+          const React = await import('react');
+          root.render(
+            React.createElement(SlidePreview, {
+              slide: slides[i],
+              template: template,
+              slideNumber: i + 1,
+              totalSlides: slides.length,
+              coverStyle: coverStyle,
+              backgroundColor: backgroundColor,
+              textColor: textColor,
+              aspectRatio: aspectRatio,
+              accentColor: accentColor,
+              slideIndex: i,
+              isEditing: false,
+              onEditStart: () => {},
+              onEditEnd: () => {},
+              onUpdateSlide: () => {},
+              showSlideNumber: false,
+            })
+          );
+          
+          // Wait for render
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Capture at higher pixel ratio so final PNG is 1080x1350 or 1080x1080
+          const dataUrl = await toPng(hiddenContainer.firstChild as HTMLElement, {
+            pixelRatio: 2,
+          });
+          
+          const response = await fetch(dataUrl);
+          const blob = await response.blob();
+          zip.file(`${carouselName}-slide-${i + 1}.png`, blob);
+          
+          root.unmount();
+          if (hiddenContainer.parentNode) {
+            document.body.removeChild(hiddenContainer);
           }
         } catch (error) {
           console.error(`Error exporting slide ${i + 1}:`, error);
+          if (error instanceof Error) {
+            console.error(`Error details: ${error.message}`);
+            console.error(`Stack: ${error.stack}`);
+          }
           failedSlides++;
+          // Cleanup on error
+          if (root) {
+            try {
+              root.unmount();
+            } catch (e) {
+              // Ignore unmount errors
+            }
+          }
+          if (hiddenContainer && hiddenContainer.parentNode) {
+            try {
+              document.body.removeChild(hiddenContainer);
+            } catch (e) {
+              // Ignore removal errors
+            }
+          }
         }
       }
-      
-      // Clean up hidden container
-      document.body.removeChild(hiddenContainer);
       
       const zipBlob = await zip.generateAsync({ type: 'blob' });
       
@@ -284,6 +320,10 @@ const EditCarousel = () => {
       }
     } catch (error) {
       console.error("Error exporting carousel:", error);
+      if (error instanceof Error) {
+        console.error(`Error details: ${error.message}`);
+        console.error(`Stack: ${error.stack}`);
+      }
       toast({
         title: "תקלה ביצוא",
         description: "נסו שוב או פנו לתמיכה",
@@ -296,37 +336,102 @@ const EditCarousel = () => {
 
   const handleExportCurrent = async () => {
     setExporting(true);
+    let root: any = null;
+    let hiddenContainer: HTMLDivElement | null = null;
     try {
       const { toPng } = await import('html-to-image');
+      const { createRoot } = await import('react-dom/client');
       const carouselName = carousel?.carousel_name || "carousel";
       
-      const slideElement = document.getElementById(`slide-preview-${selectedSlideIndex}`);
-      if (slideElement) {
-        const dataUrl = await toPng(slideElement, {
-          width: 1080,
-          height: 1080,
-          pixelRatio: 2,
-        });
-        
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
-        
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${carouselName}-slide-${selectedSlideIndex + 1}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        toast({
-          title: "השקופית יוצאה בהצלחה!",
-          description: "הקובץ הורד למחשב שלך",
-        });
+      // Base logical size for rendering (export will be upscaled via pixelRatio)
+      const baseWidth = 540; // will become 1080 with pixelRatio: 2
+      const baseHeight = aspectRatio === "4:5" ? 675 : 540;
+      
+      // Create hidden container for rendering the slide at base logical size
+      hiddenContainer = document.createElement('div');
+      hiddenContainer.style.position = 'fixed';
+      hiddenContainer.style.left = '-9999px';
+      hiddenContainer.style.top = '0';
+      hiddenContainer.style.width = `${baseWidth}px`;
+      hiddenContainer.style.height = `${baseHeight}px`;
+      hiddenContainer.style.fontSize = '16px';
+      hiddenContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+      document.body.appendChild(hiddenContainer);
+      
+      root = createRoot(hiddenContainer);
+      
+      // Render just the slide without the carousel wrapper
+      const React = await import('react');
+      root.render(
+        React.createElement(SlidePreview, {
+          slide: slides[selectedSlideIndex],
+          template: template,
+          slideNumber: selectedSlideIndex + 1,
+          totalSlides: slides.length,
+          coverStyle: coverStyle,
+          backgroundColor: backgroundColor,
+          textColor: textColor,
+          aspectRatio: aspectRatio,
+          accentColor: accentColor,
+          slideIndex: selectedSlideIndex,
+          isEditing: false,
+          onEditStart: () => {},
+          onEditEnd: () => {},
+          onUpdateSlide: () => {},
+          showSlideNumber: false,
+        })
+      );
+      
+      // Wait for render
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Capture at higher pixel ratio so final PNG is 1080x1350 or 1080x1080
+      const dataUrl = await toPng(hiddenContainer.firstChild as HTMLElement, {
+        pixelRatio: 2,
+      });
+      
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${carouselName}-slide-${selectedSlideIndex + 1}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      root.unmount();
+      if (hiddenContainer.parentNode) {
+        document.body.removeChild(hiddenContainer);
       }
+      
+      toast({
+        title: "השקופית יוצאה בהצלחה!",
+        description: "הקובץ הורד למחשב שלך",
+      });
     } catch (error) {
       console.error("Error exporting slide:", error);
+      if (error instanceof Error) {
+        console.error(`Error details: ${error.message}`);
+        console.error(`Stack: ${error.stack}`);
+      }
+      // Cleanup on error
+      if (root) {
+        try {
+          root.unmount();
+        } catch (e) {
+          // Ignore unmount errors
+        }
+      }
+      if (hiddenContainer && hiddenContainer.parentNode) {
+        try {
+          document.body.removeChild(hiddenContainer);
+        } catch (e) {
+          // Ignore removal errors
+        }
+      }
       toast({
         title: "תקלה ביצוא",
         description: "נסו שוב או פנו לתמיכה",
@@ -494,56 +599,6 @@ const EditCarousel = () => {
             SlideMint
           </h1>
           <div className="flex gap-2">
-            <Select value={template} onValueChange={(value: "dark" | "light") => setTemplate(value)}>
-              <SelectTrigger className="w-32" dir="rtl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent align="end" dir="rtl">
-                <SelectItem value="dark">תבנית כהה</SelectItem>
-                <SelectItem value="light">תבנית בהירה</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={coverStyle} onValueChange={(value) => setCoverStyle(value as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame")}>
-              <SelectTrigger className="w-40" dir="rtl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent align="end" dir="rtl">
-                <SelectItem value="minimalist">מינימליסטי</SelectItem>
-                <SelectItem value="big_number">מספר בולט</SelectItem>
-                <SelectItem value="accent_block">אלמנט דקורטיבי</SelectItem>
-                <SelectItem value="gradient_overlay">גרדיאנט</SelectItem>
-                <SelectItem value="geometric">גיאומטרי</SelectItem>
-                <SelectItem value="bold_frame">מסגרת בולטת</SelectItem>
-              </SelectContent>
-            </Select>
-            <ColorPicker color={backgroundColor} setColor={setBackgroundColor} title="שינוי רקע" />
-            <ColorPicker color={textColor} setColor={setTextColor} title="שינוי טקסט" />
-            <ColorPicker color={accentColor} setColor={setAccentColor} title="שינוי צבע עיצוב" />
-            <Select value={aspectRatio} onValueChange={(value: "1:1" | "4:5") => setAspectRatio(value)}>
-              <SelectTrigger className="w-28" dir="rtl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent align="end" dir="rtl">
-                <SelectItem value="1:1">1:1</SelectItem>
-                <SelectItem value="4:5">4:5</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button 
-              onClick={handleSave} 
-              variant="outline" 
-              size="sm"
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  שומר...
-                </>
-              ) : 'שמור'}
-            </Button>
-            <Button onClick={() => setExportModalOpen(true)} disabled={exporting} size="sm">
-              ייצא
-            </Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/my-carousels")}>
               חזרה
             </Button>
@@ -553,8 +608,8 @@ const EditCarousel = () => {
 
       <div className="container mx-auto px-4 py-3">
         <div className="flex gap-3 max-w-7xl mx-auto" style={{ height: 'calc(100vh - 120px)' }}>
-          {/* Slide list - left side in Hebrew RTL */}
-          <Card className="w-64 p-3 space-y-2 overflow-y-auto flex-shrink-0 order-1">
+          {/* Slide list - move to the opposite side of the preview */}
+          <Card className="w-64 p-3 space-y-2 overflow-y-auto flex-shrink-0 order-2">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">שקופיות ({slides.length})</h3>
               <Button
@@ -614,35 +669,86 @@ const EditCarousel = () => {
           </Card>
 
           {/* Main content area */}
-          <div className="flex-1 flex flex-col gap-3 min-w-0 order-2">
-            {/* Large slide preview */}
+          <div className="flex-1 flex flex-col gap-3 min-w-0 order-1">
+            {/* LinkedIn-style carousel preview */}
             <div className="flex-shrink-0">
-              <div id={`slide-preview-${selectedSlideIndex}`} className="w-full max-w-2xl mx-auto">
-                <div onClick={(e) => e.stopPropagation()}>
-                  <SlidePreview
-                    key={selectedSlideIndex}
-                    slide={selectedSlide}
-                    template={template}
-                    slideNumber={selectedSlideIndex + 1}
-                    totalSlides={slides.length}
-                    coverStyle={coverStyle}
-                    backgroundColor={backgroundColor}
-                    textColor={textColor}
-                    aspectRatio={aspectRatio}
-                    accentColor={accentColor}
-                    slideIndex={selectedSlideIndex}
-                    isEditing={editingSlideIndex === selectedSlideIndex}
-                    onEditStart={() => setEditingSlideIndex(selectedSlideIndex)}
-                    onEditEnd={() => {}} // Don't disable editing when clicking away
-                    onUpdateSlide={(updates) => {
-                      handleUpdateSlide(selectedSlideIndex, updates);
-                    }}
-                  />
+              <div id={`slide-preview-${selectedSlideIndex}`} className="w-full flex flex-col items-center gap-3">
+                <LinkedInCarouselPreview
+                  slides={slides}
+                  template={template}
+                  coverStyle={coverStyle}
+                  backgroundColor={backgroundColor}
+                  textColor={textColor}
+                  aspectRatio={aspectRatio}
+                  accentColor={accentColor}
+                  editingSlideIndex={editingSlideIndex}
+                  onEditStart={(slideIndex) => {
+                    setSelectedSlideIndex(slideIndex);
+                    setEditingSlideIndex(slideIndex);
+                  }}
+                  onEditEnd={() => {}} // Don't disable editing when clicking away
+                  onUpdateSlide={(slideIndex, updates) => {
+                    handleUpdateSlide(slideIndex, updates);
+                  }}
+                />
+
+                {/* Editing controls toolbar below the preview */}
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                  <Select value={template} onValueChange={(value: "dark" | "light") => setTemplate(value)}>
+                    <SelectTrigger className="w-32" dir="rtl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="end" dir="rtl">
+                      <SelectItem value="dark">תבנית כהה</SelectItem>
+                      <SelectItem value="light">תבנית בהירה</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={coverStyle} onValueChange={(value) => setCoverStyle(value as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame")}>
+                    <SelectTrigger className="w-40" dir="rtl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="end" dir="rtl">
+                      <SelectItem value="minimalist">מינימליסטי</SelectItem>
+                      <SelectItem value="big_number">מספר בולט</SelectItem>
+                      <SelectItem value="accent_block">אלמנט דקורטיבי</SelectItem>
+                      <SelectItem value="gradient_overlay">גרדיאנט</SelectItem>
+                      <SelectItem value="geometric">גיאומטרי</SelectItem>
+                      <SelectItem value="bold_frame">מסגרת בולטת</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <ColorPicker color={backgroundColor} setColor={setBackgroundColor} title="שינוי רקע" />
+                  <ColorPicker color={textColor} setColor={setTextColor} title="שינוי טקסט" />
+                  <ColorPicker color={accentColor} setColor={setAccentColor} title="שינוי צבע עיצוב" />
+                  <Select value={aspectRatio} onValueChange={(value: "1:1" | "4:5") => setAspectRatio(value)}>
+                    <SelectTrigger className="w-28" dir="rtl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="end" dir="rtl">
+                      <SelectItem value="1:1">1:1</SelectItem>
+                      <SelectItem value="4:5">4:5</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    onClick={handleSave} 
+                    variant="outline" 
+                    size="sm"
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        שומר...
+                      </>
+                    ) : 'שמור'}
+                  </Button>
+                  <Button onClick={() => setExportModalOpen(true)} disabled={exporting} size="sm">
+                    ייצא
+                  </Button>
                 </div>
               </div>
             </div>
 
-            {/* Removed slide editing panel in favor of inline editing */}
+            {/* Spacer under controls */}
             <div className="h-4"></div>
           </div>
         </div>
