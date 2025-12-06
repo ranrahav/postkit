@@ -177,17 +177,10 @@ const SlidePreview = ({
           )}
         </div>
 
-        {/* Slide number */}
-        {showSlideNumber && (
-          <div className="flex justify-between items-end">
-            <div className="text-lg font-medium" style={{ color: finalAccentColor }} data-slide-number>
-              {slideNumber}/{totalSlides}
-            </div>
-            <div className="text-xl font-semibold opacity-50">
-              SlideMint
-            </div>
-          </div>
-        )}
+        {/* SlideMint logo - smaller and positioned at bottom left */}
+        <div className="absolute bottom-4 left-4 text-sm font-medium opacity-40">
+          SlideMint
+        </div>
       </div>
     </div>
   );

@@ -12,7 +12,6 @@ import { he } from "date-fns/locale";
 import { debounce } from "lodash";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SlidePreview from "@/components/SlidePreview";
-import ExportModal from "@/components/ExportModal";
 import ColorPicker from "@/components/ui/color-picker";
 
 interface Slide {
@@ -48,7 +47,6 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   
   // Create modal state
@@ -371,6 +369,9 @@ const Dashboard = () => {
         .from("profiles")
         .update({ carousel_count: (profile?.carousel_count || 0) + 1 })
         .eq("id", user.id);
+      
+      // Update local profile state immediately
+      setProfile(prev => ({ ...prev, carousel_count: (prev?.carousel_count || 0) + 1 }));
 
       toast({
         title: "הקרוסלה נוצרה בהצלחה!",
@@ -425,6 +426,9 @@ const Dashboard = () => {
           .from("profiles")
           .update({ carousel_count: Math.max(0, profile.carousel_count - 1) })
           .eq("id", profile.id);
+        
+        // Update local profile state immediately
+        setProfile({ ...profile, carousel_count: Math.max(0, profile.carousel_count - 1) });
       }
 
       // Reset selection if deleted carousel was selected
@@ -449,6 +453,60 @@ const Dashboard = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleTemplateChange = (newTemplate: "dark" | "light") => {
+    if (!selectedCarousel) return;
+    setTemplate(newTemplate);
+    const updatedCarousel = { ...selectedCarousel, chosen_template: newTemplate };
+    setSelectedCarousel(updatedCarousel);
+    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
+    debouncedSave(updatedCarousel);
+  };
+
+  const handleCoverStyleChange = (newCoverStyle: typeof coverStyle) => {
+    if (!selectedCarousel) return;
+    setCoverStyle(newCoverStyle);
+    const updatedCarousel = { ...selectedCarousel, cover_style: newCoverStyle };
+    setSelectedCarousel(updatedCarousel);
+    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
+    debouncedSave(updatedCarousel);
+  };
+
+  const handleBackgroundColorChange = (newColor: string) => {
+    if (!selectedCarousel) return;
+    setBackgroundColor(newColor);
+    const updatedCarousel = { ...selectedCarousel, background_color: newColor };
+    setSelectedCarousel(updatedCarousel);
+    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
+    debouncedSave(updatedCarousel);
+  };
+
+  const handleTextColorChange = (newColor: string) => {
+    if (!selectedCarousel) return;
+    setTextColor(newColor);
+    const updatedCarousel = { ...selectedCarousel, text_color: newColor };
+    setSelectedCarousel(updatedCarousel);
+    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
+    debouncedSave(updatedCarousel);
+  };
+
+  const handleAccentColorChange = (newColor: string) => {
+    if (!selectedCarousel) return;
+    setAccentColor(newColor);
+    const updatedCarousel = { ...selectedCarousel, accent_color: newColor };
+    setSelectedCarousel(updatedCarousel);
+    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
+    debouncedSave(updatedCarousel);
+  };
+
+  const handleAspectRatioChange = (newAspectRatio: "1:1" | "4:5") => {
+    if (!selectedCarousel) return;
+    setAspectRatio(newAspectRatio);
+    const updatedCarousel = { ...selectedCarousel, aspect_ratio: newAspectRatio };
+    setSelectedCarousel(updatedCarousel);
+    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
+    debouncedSave(updatedCarousel);
   };
 
   const handleUpdateSlide = (slideIndex: number, updates: Partial<Slide>) => {
@@ -501,6 +559,36 @@ const Dashboard = () => {
     [template, coverStyle, backgroundColor, textColor, aspectRatio, accentColor, toast]
   );
 
+  const handleAddNewSlide = () => {
+    if (!selectedCarousel) return;
+    
+    const slides = parseSlides(selectedCarousel.slides);
+    const newSlide: Slide = {
+      index: slides.length,
+      title: "כותרת חדשה",
+      body: "תוכן חדש"
+    };
+    
+    const updatedSlides = [...slides, newSlide];
+    const updatedCarousel = { ...selectedCarousel, slides: updatedSlides };
+    
+    setSelectedCarousel(updatedCarousel);
+    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
+    setSelectedSlideIndex(slides.length); // Select the new slide
+    
+    // Scroll to the new slide
+    setTimeout(() => {
+      scrollToSlide(slides.length);
+    }, 100);
+    
+    debouncedSave(updatedCarousel);
+    
+    toast({
+      title: "שקופית חדשה נוספה",
+      description: "השקופית נוספה בהצלחה"
+    });
+  };
+
   const handleDeleteSlide = (index: number) => {
     if (!selectedCarousel) return;
     
@@ -542,8 +630,8 @@ const Dashboard = () => {
     debouncedSave(updatedCarousel);
   };
 
-  const handleExport = async () => {
-    if (!selectedCarousel) return;
+  const handleExportCarousel = async (carousel: Carousel) => {
+    if (!carousel) return;
     setExporting(true);
     try {
       const { toPng } = await import('html-to-image');
@@ -551,13 +639,21 @@ const Dashboard = () => {
       const { createRoot } = await import('react-dom/client');
       
       const zip = new JSZip();
-      const carouselName = selectedCarousel?.carousel_name || "carousel";
-      const slides = parseSlides(selectedCarousel.slides);
+      const carouselName = carousel?.carousel_name || "carousel";
+      const slides = parseSlides(carousel.slides);
       let failedSlides = 0;
+      
+      // Use the carousel's own settings for export
+      const carouselTemplate = (carousel.chosen_template as "dark" | "light") || "dark";
+      const carouselCoverStyle = (carousel.cover_style as any) || "minimalist";
+      const carouselBackgroundColor = carousel.background_color || "#000000";
+      const carouselTextColor = carousel.text_color || "#FFFFFF";
+      const carouselAccentColor = carousel.accent_color || "#FFFFFF";
+      const carouselAspectRatio = (carousel.aspect_ratio as "1:1" | "4:5") || "4:5";
       
       // Base logical size for rendering (export will be upscaled via pixelRatio)
       const baseWidth = 540; // will become 1080 with pixelRatio: 2
-      const baseHeight = aspectRatio === "4:5" ? 675 : 540; // 4:5 -> 540x675, 1:1 -> 540x540
+      const baseHeight = carouselAspectRatio === "4:5" ? 675 : 540; // 4:5 -> 540x675, 1:1 -> 540x540
       
       for (let i = 0; i < slides.length; i++) {
         let root: any = null;
@@ -581,14 +677,14 @@ const Dashboard = () => {
           root.render(
             React.createElement(SlidePreview, {
               slide: slides[i],
-              template: template,
+              template: carouselTemplate,
               slideNumber: i + 1,
               totalSlides: slides.length,
-              coverStyle: coverStyle,
-              backgroundColor: backgroundColor,
-              textColor: textColor,
-              aspectRatio: aspectRatio,
-              accentColor: accentColor,
+              coverStyle: carouselCoverStyle,
+              backgroundColor: carouselBackgroundColor,
+              textColor: carouselTextColor,
+              aspectRatio: carouselAspectRatio,
+              accentColor: carouselAccentColor,
               slideIndex: i,
               isEditing: false,
               onEditStart: () => {},
@@ -670,20 +766,28 @@ const Dashboard = () => {
     }
   };
 
-  const handleExportCurrent = async () => {
-    if (!selectedCarousel) return;
-    setExporting(true);
+  const handleExportSingleSlide = async (slide: Slide, slideIndex: number, carousel: Carousel) => {
+    if (!slide || !carousel) return;
+    
     let root: any = null;
     let hiddenContainer: HTMLDivElement | null = null;
     try {
       const { toPng } = await import('html-to-image');
       const { createRoot } = await import('react-dom/client');
-      const carouselName = selectedCarousel?.carousel_name || "carousel";
-      const slides = parseSlides(selectedCarousel.slides);
+      const carouselName = carousel?.carousel_name || "carousel";
+      const slides = parseSlides(carousel.slides);
+      
+      // Use the carousel's own settings for export
+      const carouselTemplate = (carousel.chosen_template as "dark" | "light") || "dark";
+      const carouselCoverStyle = (carousel.cover_style as any) || "minimalist";
+      const carouselBackgroundColor = carousel.background_color || "#000000";
+      const carouselTextColor = carousel.text_color || "#FFFFFF";
+      const carouselAccentColor = carousel.accent_color || "#FFFFFF";
+      const carouselAspectRatio = (carousel.aspect_ratio as "1:1" | "4:5") || "4:5";
       
       // Base logical size for rendering (export will be upscaled via pixelRatio)
       const baseWidth = 540; // will become 1080 with pixelRatio: 2
-      const baseHeight = aspectRatio === "4:5" ? 675 : 540;
+      const baseHeight = carouselAspectRatio === "4:5" ? 675 : 540;
       
       // Create hidden container for rendering the slide at base logical size
       hiddenContainer = document.createElement('div');
@@ -702,16 +806,16 @@ const Dashboard = () => {
       const React = await import('react');
       root.render(
         React.createElement(SlidePreview, {
-          slide: slides[selectedSlideIndex],
-          template: template,
-          slideNumber: selectedSlideIndex + 1,
+          slide: slide,
+          template: carouselTemplate,
+          slideNumber: slideIndex + 1,
           totalSlides: slides.length,
-          coverStyle: coverStyle,
-          backgroundColor: backgroundColor,
-          textColor: textColor,
-          aspectRatio: aspectRatio,
-          accentColor: accentColor,
-          slideIndex: selectedSlideIndex,
+          coverStyle: carouselCoverStyle,
+          backgroundColor: carouselBackgroundColor,
+          textColor: carouselTextColor,
+          aspectRatio: carouselAspectRatio,
+          accentColor: carouselAccentColor,
+          slideIndex: slideIndex,
           isEditing: false,
           onEditStart: () => {},
           onEditEnd: () => {},
@@ -734,7 +838,7 @@ const Dashboard = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${carouselName}-slide-${selectedSlideIndex + 1}.png`;
+      a.download = `${carouselName}-slide-${slideIndex + 1}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -771,8 +875,6 @@ const Dashboard = () => {
         description: "נסו שוב או פנו לתמיכה",
         variant: "destructive",
       });
-    } finally {
-      setExporting(false);
     }
   };
 
@@ -821,6 +923,19 @@ const Dashboard = () => {
                     className="h-full flex items-center gap-4 overflow-x-auto overflow-y-hidden pb-4 scrollbar-hide"
                     style={{ scrollBehavior: 'smooth', msOverflowStyle: 'none', scrollbarWidth: 'none' }}
                   >
+                    {/* Add New Slide Button */}
+                    <div className="flex-shrink-0">
+                      <button
+                        onClick={handleAddNewSlide}
+                        className="w-[400px] h-[calc(100vh-300px)] max-h-[600px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 group"
+                      >
+                        <div className="text-center">
+                          <Plus className="w-12 h-12 mx-auto mb-2 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                          <p className="text-slate-500 group-hover:text-slate-700 transition-colors">הוסף שקופית חדשה</p>
+                        </div>
+                      </button>
+                    </div>
+                    
                     {parseSlides(selectedCarousel.slides).slice().reverse().map((slide, reverseIndex) => {
                       const index = parseSlides(selectedCarousel.slides).length - 1 - reverseIndex;
                       const visualSlideNumber = index + 1; // 1, 2, 3... based on actual position
@@ -862,13 +977,29 @@ const Dashboard = () => {
                             onEditStart={() => setSelectedSlideIndex(index)}
                             onEditEnd={() => {}}
                             onUpdateSlide={(updates) => handleUpdateSlide(index, updates)}
-                            showSlideNumber={true}
+                            showSlideNumber={false}
                           />
+                          {/* Slide count below the slide */}
+                          <div className="text-center mt-2 text-sm font-medium text-slate-600">
+                            {visualSlideNumber}/{parseSlides(selectedCarousel.slides).length}
+                          </div>
                         </div>
                         
                         {/* Slide Actions */}
                         {isActive && (
                           <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleExportSingleSlide(slide, index, selectedCarousel);
+                              }}
+                              disabled={exporting}
+                            >
+                              <Download className="h-3 w-3" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="secondary"
@@ -882,7 +1013,7 @@ const Dashboard = () => {
                             </Button>
                             <Button
                               size="sm"
-                              variant="destructive"
+                              variant="secondary"
                               className="h-6 w-6 p-0"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -936,7 +1067,7 @@ const Dashboard = () => {
           </div>
 
           {/* Bottom Editing Panel */}
-          <div className="border-t bg-background/80 backdrop-blur-sm p-6">
+          <div className="border-t bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 backdrop-blur-sm p-6 border-t-slate-200/50">
             <div className="max-w-6xl mx-auto">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {/* Template Selection */}
@@ -944,7 +1075,7 @@ const Dashboard = () => {
                   <label className="text-sm font-medium">תבנית</label>
                   <Select 
                     value={selectedCarousel ? template : "dark"} 
-                    onValueChange={(value: "dark" | "light") => selectedCarousel && setTemplate(value)}
+                    onValueChange={handleTemplateChange}
                     disabled={!selectedCarousel}
                   >
                     <SelectTrigger dir="rtl">
@@ -962,7 +1093,7 @@ const Dashboard = () => {
                   <label className="text-sm font-medium">סגנון כריכה</label>
                   <Select 
                     value={selectedCarousel ? coverStyle : "minimalist"} 
-                    onValueChange={(value) => selectedCarousel && setCoverStyle(value as any)}
+                    onValueChange={handleCoverStyleChange}
                     disabled={!selectedCarousel}
                   >
                     <SelectTrigger dir="rtl">
@@ -984,7 +1115,7 @@ const Dashboard = () => {
                   <label className="text-sm font-medium">רקע</label>
                   <ColorPicker 
                     color={selectedCarousel ? backgroundColor : "#000000"} 
-                    setColor={selectedCarousel ? setBackgroundColor : () => {}} 
+                    setColor={handleBackgroundColorChange} 
                     title="שינוי רקע" 
                     disabled={!selectedCarousel}
                   />
@@ -995,7 +1126,7 @@ const Dashboard = () => {
                   <label className="text-sm font-medium">טקסט</label>
                   <ColorPicker 
                     color={selectedCarousel ? textColor : "#FFFFFF"} 
-                    setColor={selectedCarousel ? setTextColor : () => {}} 
+                    setColor={handleTextColorChange} 
                     title="שינוי טקסט" 
                     disabled={!selectedCarousel}
                   />
@@ -1006,7 +1137,7 @@ const Dashboard = () => {
                   <label className="text-sm font-medium">צבע עיצוב</label>
                   <ColorPicker 
                     color={selectedCarousel ? accentColor : "#FFFFFF"} 
-                    setColor={selectedCarousel ? setAccentColor : () => {}} 
+                    setColor={handleAccentColorChange} 
                     title="שינוי צבע עיצוב" 
                     disabled={!selectedCarousel}
                   />
@@ -1017,7 +1148,7 @@ const Dashboard = () => {
                   <label className="text-sm font-medium">יחס גובה-רוחב</label>
                   <Select 
                     value={selectedCarousel ? aspectRatio : "4:5"} 
-                    onValueChange={(value: "1:1" | "4:5") => selectedCarousel && setAspectRatio(value)}
+                    onValueChange={handleAspectRatioChange}
                     disabled={!selectedCarousel}
                   >
                     <SelectTrigger dir="rtl">
@@ -1030,25 +1161,14 @@ const Dashboard = () => {
                   </Select>
                 </div>
               </div>
-              
-              {/* Export Button */}
-              <div className="mt-4 flex justify-end">
-                <Button 
-                  onClick={handleExport} 
-                  disabled={exporting || !selectedCarousel}
-                >
-                  <Download className="ml-2 h-4 w-4" />
-                  ייצא הכל
-                </Button>
-              </div>
             </div>
           </div>
         </div>
 
         {/* Right Panel - Carousel List */}
-        <div className="w-[320px] flex-shrink-0 border-r bg-background/50 flex flex-col">
+        <div className="w-[320px] flex-shrink-0 border-r bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 backdrop-blur-sm flex flex-col border-r-slate-200/50">
           {/* Search and Add */}
-          <div className="p-4 border-b space-y-3">
+          <div className="p-4 border-b space-y-3 bg-white/50 backdrop-blur-sm border-b-slate-200/30">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -1070,9 +1190,9 @@ const Dashboard = () => {
 
           {/* Carousel Count */}
           {profile && (
-            <div className="px-4 py-2 border-b">
+            <div className="px-4 py-2 border-b bg-white/30 backdrop-blur-sm border-b-slate-200/30">
               <div className="text-center">
-                <span className="text-sm font-medium">
+                <span className="text-sm font-medium text-slate-700">
                   {profile.carousel_count}/10 קרוסלות
                 </span>
               </div>
@@ -1120,6 +1240,18 @@ const Dashboard = () => {
                         </p>
                       </div>
                       <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExportCarousel(carousel);
+                          }}
+                          disabled={exporting}
+                        >
+                          <Download className="h-3 w-3" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -1233,14 +1365,6 @@ const Dashboard = () => {
           </Card>
         </div>
       )}
-
-      {/* Export Modal */}
-      <ExportModal
-        open={exportModalOpen}
-        onOpenChange={setExportModalOpen}
-        onExportAll={handleExport}
-        onExportCurrent={handleExportCurrent}
-      />
 
       {/* Export Loading Overlay */}
       {exporting && (
