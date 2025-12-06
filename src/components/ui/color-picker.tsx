@@ -7,6 +7,7 @@ interface ColorPickerProps {
   color: string;
   setColor: (color: string) => void;
   title: string;
+  disabled?: boolean;
 }
 
 const colors = [
@@ -20,13 +21,17 @@ const colors = [
   '#00FFFF',
 ];
 
-const ColorPicker = ({ color, setColor, title }: ColorPickerProps) => {
+const ColorPicker = ({ color, setColor, title, disabled = false }: ColorPickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen && !disabled} onOpenChange={disabled ? () => {} : setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-40 justify-between">
+        <Button 
+          variant="outline" 
+          className="w-40 justify-between"
+          disabled={disabled}
+        >
           <span>{title}</span>
           <div className="flex items-center gap-2">
             <div

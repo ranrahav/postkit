@@ -21,7 +21,7 @@ const Auth = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/create");
+        navigate("/dashboard");
       }
     });
   }, [navigate]);
@@ -60,16 +60,16 @@ const Auth = () => {
 
         toast({
           title: "התחברת בהצלחה!",
-          description: "מעביר אותך לדף יצירת הקרוסלה...",
+          description: "מעביר אותך ללוח הבקרה...",
         });
         
-        navigate("/create");
+        navigate("/dashboard");
       } else {
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/create`,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         });
 
@@ -77,10 +77,10 @@ const Auth = () => {
 
         toast({
           title: "נרשמת בהצלחה!",
-          description: "מעביר אותך לדף יצירת הקרוסלה...",
+          description: "מעביר אותך ללוח הבקרה...",
         });
         
-        navigate("/create");
+        navigate("/dashboard");
       }
     } catch (error: any) {
       toast({

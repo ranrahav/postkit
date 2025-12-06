@@ -25,7 +25,7 @@ const Landing = () => {
 
   const handleGetStarted = () => {
     if (isLoggedIn) {
-      navigate("/create");
+      navigate("/dashboard");
     } else {
       navigate("/auth");
     }
@@ -47,8 +47,8 @@ const Landing = () => {
           <div className="flex gap-2">
             {isLoggedIn ? (
               <>
-                <Button variant="ghost" onClick={() => navigate("/my-carousels")}>
-                  הקרוסלות שלי
+                <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+                  לוח בקרה
                 </Button>
                 <Button variant="ghost" onClick={handleSignOut}>
                   יציאה

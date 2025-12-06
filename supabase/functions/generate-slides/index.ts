@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // Define allowed origins
 const allowedOrigins = [
   'http://localhost:8080',
+  'http://localhost:8083',
   'https://postkit-five.vercel.app',
   'https://postkit-git-main-ranrahavs-projects.vercel.app',
   'https://postkit-*.vercel.app' // This is a wildcard for Vercel preview deployments
