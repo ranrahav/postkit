@@ -458,7 +458,15 @@ const Dashboard = () => {
   const handleTemplateChange = (newTemplate: "dark" | "light") => {
     if (!selectedCarousel) return;
     setTemplate(newTemplate);
-    const updatedCarousel = { ...selectedCarousel, chosen_template: newTemplate };
+    const updatedCarousel = { 
+      ...selectedCarousel, 
+      chosen_template: newTemplate,
+      cover_style: selectedCarousel.cover_style || coverStyle,
+      background_color: selectedCarousel.background_color || backgroundColor,
+      text_color: selectedCarousel.text_color || textColor,
+      aspect_ratio: selectedCarousel.aspect_ratio || aspectRatio,
+      accent_color: selectedCarousel.accent_color || accentColor,
+    };
     setSelectedCarousel(updatedCarousel);
     setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
     debouncedSave(updatedCarousel);
@@ -467,7 +475,15 @@ const Dashboard = () => {
   const handleCoverStyleChange = (newCoverStyle: typeof coverStyle) => {
     if (!selectedCarousel) return;
     setCoverStyle(newCoverStyle);
-    const updatedCarousel = { ...selectedCarousel, cover_style: newCoverStyle };
+    const updatedCarousel = { 
+      ...selectedCarousel, 
+      cover_style: newCoverStyle,
+      chosen_template: selectedCarousel.chosen_template || template,
+      background_color: selectedCarousel.background_color || backgroundColor,
+      text_color: selectedCarousel.text_color || textColor,
+      aspect_ratio: selectedCarousel.aspect_ratio || aspectRatio,
+      accent_color: selectedCarousel.accent_color || accentColor,
+    };
     setSelectedCarousel(updatedCarousel);
     setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
     debouncedSave(updatedCarousel);
@@ -476,7 +492,15 @@ const Dashboard = () => {
   const handleBackgroundColorChange = (newColor: string) => {
     if (!selectedCarousel) return;
     setBackgroundColor(newColor);
-    const updatedCarousel = { ...selectedCarousel, background_color: newColor };
+    const updatedCarousel = { 
+      ...selectedCarousel, 
+      background_color: newColor,
+      chosen_template: selectedCarousel.chosen_template || template,
+      cover_style: selectedCarousel.cover_style || coverStyle,
+      text_color: selectedCarousel.text_color || textColor,
+      aspect_ratio: selectedCarousel.aspect_ratio || aspectRatio,
+      accent_color: selectedCarousel.accent_color || accentColor,
+    };
     setSelectedCarousel(updatedCarousel);
     setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
     debouncedSave(updatedCarousel);
@@ -485,7 +509,15 @@ const Dashboard = () => {
   const handleTextColorChange = (newColor: string) => {
     if (!selectedCarousel) return;
     setTextColor(newColor);
-    const updatedCarousel = { ...selectedCarousel, text_color: newColor };
+    const updatedCarousel = { 
+      ...selectedCarousel, 
+      text_color: newColor,
+      chosen_template: selectedCarousel.chosen_template || template,
+      cover_style: selectedCarousel.cover_style || coverStyle,
+      background_color: selectedCarousel.background_color || backgroundColor,
+      aspect_ratio: selectedCarousel.aspect_ratio || aspectRatio,
+      accent_color: selectedCarousel.accent_color || accentColor,
+    };
     setSelectedCarousel(updatedCarousel);
     setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
     debouncedSave(updatedCarousel);
@@ -494,7 +526,15 @@ const Dashboard = () => {
   const handleAccentColorChange = (newColor: string) => {
     if (!selectedCarousel) return;
     setAccentColor(newColor);
-    const updatedCarousel = { ...selectedCarousel, accent_color: newColor };
+    const updatedCarousel = { 
+      ...selectedCarousel, 
+      accent_color: newColor,
+      chosen_template: selectedCarousel.chosen_template || template,
+      cover_style: selectedCarousel.cover_style || coverStyle,
+      background_color: selectedCarousel.background_color || backgroundColor,
+      text_color: selectedCarousel.text_color || textColor,
+      aspect_ratio: selectedCarousel.aspect_ratio || aspectRatio,
+    };
     setSelectedCarousel(updatedCarousel);
     setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
     debouncedSave(updatedCarousel);
@@ -503,7 +543,15 @@ const Dashboard = () => {
   const handleAspectRatioChange = (newAspectRatio: "1:1" | "4:5") => {
     if (!selectedCarousel) return;
     setAspectRatio(newAspectRatio);
-    const updatedCarousel = { ...selectedCarousel, aspect_ratio: newAspectRatio };
+    const updatedCarousel = { 
+      ...selectedCarousel, 
+      aspect_ratio: newAspectRatio,
+      chosen_template: selectedCarousel.chosen_template || template,
+      cover_style: selectedCarousel.cover_style || coverStyle,
+      background_color: selectedCarousel.background_color || backgroundColor,
+      text_color: selectedCarousel.text_color || textColor,
+      accent_color: selectedCarousel.accent_color || accentColor,
+    };
     setSelectedCarousel(updatedCarousel);
     setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
     debouncedSave(updatedCarousel);
@@ -533,12 +581,12 @@ const Dashboard = () => {
           .from("carousels")
           .update({
             slides: stringifySlides(carousel.slides),
-            chosen_template: template,
-            cover_style: coverStyle,
-            background_color: backgroundColor,
-            text_color: textColor,
-            aspect_ratio: aspectRatio,
-            accent_color: accentColor,
+            chosen_template: carousel.chosen_template,
+            cover_style: carousel.cover_style,
+            background_color: carousel.background_color,
+            text_color: carousel.text_color,
+            aspect_ratio: carousel.aspect_ratio,
+            accent_color: carousel.accent_color,
             updated_at: new Date().toISOString(),
           })
           .eq("id", carousel.id);
