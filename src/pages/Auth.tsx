@@ -19,11 +19,23 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate("/dashboard");
+      }
+    };
+    
+    checkSession();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         navigate("/dashboard");
       }
     });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -144,6 +156,11 @@ const Auth = () => {
       });
       setLoading(false);
     }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.reload();
   };
 
   return (
@@ -303,7 +320,7 @@ const Auth = () => {
           </div>
         )}
 
-        <div className="pt-4 text-center">
+        <div className="pt-4 text-center space-y-2">
           <Button
             variant="ghost"
             onClick={() => navigate("/")}
@@ -311,6 +328,18 @@ const Auth = () => {
           >
             חזרה לדף הבית
           </Button>
+          
+          <div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+              disabled={loading}
+              className="text-xs"
+            >
+              נקה התחברות אוטומטית
+            </Button>
+          </div>
         </div>
       </Card>
     </div>
