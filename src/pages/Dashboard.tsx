@@ -233,6 +233,8 @@ const Dashboard = () => {
   };
 
   const fetchCarousels = async (userId: string) => {
+    console.log("🔄 fetchCarousels called - reloading data from server");
+    console.trace("Stack trace for fetchCarousels call:");
     try {
       const { data, error } = await supabase
         .from("carousels")
@@ -243,14 +245,25 @@ const Dashboard = () => {
       if (error) throw error;
       
       // Parse slides for each carousel
-      const parsedCarousels = (data || []).map(carousel => ({
+      const parsedCarousels = data.map(carousel => ({
         ...carousel,
-        slides: parseSlides(carousel.slides)
+        slides: parseSlides(carousel.slides),
       }));
       
       setCarousels(parsedCarousels);
-      if (parsedCarousels && parsedCarousels.length > 0) {
+      console.log("📦 Carousels reloaded from server:", parsedCarousels.length);
+      
+      // Only select first carousel if no carousel is currently selected
+      if (parsedCarousels && parsedCarousels.length > 0 && !selectedCarousel) {
+        console.log("🎯 No carousel selected, selecting first one");
         selectCarousel(parsedCarousels[0]);
+      } else if (selectedCarousel) {
+        console.log("🎯 Preserving currently selected carousel:", selectedCarousel.id);
+        // Find the updated version of the currently selected carousel
+        const updatedSelectedCarousel = parsedCarousels.find(c => c.id === selectedCarousel.id);
+        if (updatedSelectedCarousel) {
+          selectCarousel(updatedSelectedCarousel);
+        }
       }
     } catch (error) {
       console.error("Error fetching carousels:", error);
@@ -265,9 +278,27 @@ const Dashboard = () => {
   };
 
   const selectCarousel = (carousel: Carousel) => {
+    // Prevent unnecessary re-selection if it's the same carousel
+    if (selectedCarousel && selectedCarousel.id === carousel.id) {
+      console.log("🎯 selectCarousel skipped - same carousel already selected:", carousel.id);
+      return;
+    }
+    
+    console.log("🎯 selectCarousel called with:", carousel.id);
+    console.log("📝 Loading carousel design:", {
+      chosen_template: carousel.chosen_template,
+      cover_style: carousel.cover_style,
+      background_color: carousel.background_color,
+      text_color: carousel.text_color,
+      aspect_ratio: carousel.aspect_ratio,
+      accent_color: carousel.accent_color,
+    });
+    
     setSelectedCarousel(carousel);
     // Start with slide 0 (first slide)
     setSelectedSlideIndex(0);
+    
+    // Load the carousel's design into local state
     setTemplate((carousel.chosen_template as "dark" | "light") || "dark");
     setCoverStyle((carousel.cover_style as any) || "minimalist");
     setBackgroundColor(carousel.background_color || "#000000");
@@ -278,7 +309,7 @@ const Dashboard = () => {
     // Auto-scroll to the first slide after component renders
     setTimeout(() => {
       scrollToSlide(0);
-    }, 300);
+    }, 100);
   };
 
   const navigateSlide = (direction: number) => {
@@ -455,106 +486,125 @@ const Dashboard = () => {
     }
   };
 
-  const handleTemplateChange = (newTemplate: "dark" | "light") => {
-    if (!selectedCarousel) return;
-    setTemplate(newTemplate);
-    const updatedCarousel = { 
-      ...selectedCarousel, 
-      chosen_template: newTemplate,
-      cover_style: selectedCarousel.cover_style || coverStyle,
-      background_color: selectedCarousel.background_color || backgroundColor,
-      text_color: selectedCarousel.text_color || textColor,
-      aspect_ratio: selectedCarousel.aspect_ratio || aspectRatio,
-      accent_color: selectedCarousel.accent_color || accentColor,
+  // Single, clean function to update design properties
+  const updateDesignProperty = async (property: string, value: any) => {
+    if (!selectedCarousel) {
+      console.log("No selected carousel - change ignored");
+      return;
+    }
+    
+    console.log(`🎨 Updating ${property} to:`, value);
+    
+    // Create updated carousel with the new property
+    const updatedCarousel = {
+      ...selectedCarousel,
+      [property]: value,
     };
+    
+    // Update local state immediately
     setSelectedCarousel(updatedCarousel);
     setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
-    debouncedSave(updatedCarousel);
+    
+    // Save to database
+    try {
+      const { error } = await supabase
+        .from("carousels")
+        .update({
+          [property]: value,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", selectedCarousel.id);
+        
+      if (error) throw error;
+      console.log(`✅ ${property} saved successfully`);
+    } catch (error) {
+      console.error(`❌ Failed to save ${property}:`, error);
+      toast({
+        title: "שגיאה",
+        description: `לא ניתן לשמור את ${property}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTemplateChange = async (newTemplate: "dark" | "light") => {
+    if (!selectedCarousel) return;
+    
+    console.log("🎨 Template change:", newTemplate);
+    
+    // Define color swaps based on template
+    const newBackgroundColor = newTemplate === "dark" ? "#000000" : "#FFFFFF";
+    const newTextColor = newTemplate === "dark" ? "#FFFFFF" : "#000000";
+    
+    // Update local state immediately (preserve accent color)
+    setTemplate(newTemplate);
+    setBackgroundColor(newBackgroundColor);
+    setTextColor(newTextColor);
+    // Don't change accentColor - keep it as is
+    
+    // Create updated carousel with swapped colors but preserve other properties
+    const updatedCarousel = {
+      ...selectedCarousel,
+      chosen_template: newTemplate,
+      background_color: newBackgroundColor,
+      text_color: newTextColor,
+      // Preserve all other properties unchanged
+      cover_style: selectedCarousel.cover_style,
+      accent_color: selectedCarousel.accent_color,
+      aspect_ratio: selectedCarousel.aspect_ratio,
+    };
+    
+    // Update carousel state and save
+    setSelectedCarousel(updatedCarousel);
+    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
+    
+    // Save to database
+    try {
+      const { error } = await supabase
+        .from("carousels")
+        .update({
+          chosen_template: newTemplate,
+          background_color: newBackgroundColor,
+          text_color: newTextColor,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", selectedCarousel.id);
+        
+      if (error) throw error;
+      console.log("✅ Template and colors saved successfully");
+    } catch (error) {
+      console.error("❌ Failed to save template and colors:", error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לשמור את התבנית",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCoverStyleChange = (newCoverStyle: typeof coverStyle) => {
-    if (!selectedCarousel) return;
     setCoverStyle(newCoverStyle);
-    const updatedCarousel = { 
-      ...selectedCarousel, 
-      cover_style: newCoverStyle,
-      chosen_template: selectedCarousel.chosen_template || template,
-      background_color: selectedCarousel.background_color || backgroundColor,
-      text_color: selectedCarousel.text_color || textColor,
-      aspect_ratio: selectedCarousel.aspect_ratio || aspectRatio,
-      accent_color: selectedCarousel.accent_color || accentColor,
-    };
-    setSelectedCarousel(updatedCarousel);
-    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
-    debouncedSave(updatedCarousel);
+    updateDesignProperty('cover_style', newCoverStyle);
   };
 
   const handleBackgroundColorChange = (newColor: string) => {
-    if (!selectedCarousel) return;
     setBackgroundColor(newColor);
-    const updatedCarousel = { 
-      ...selectedCarousel, 
-      background_color: newColor,
-      chosen_template: selectedCarousel.chosen_template || template,
-      cover_style: selectedCarousel.cover_style || coverStyle,
-      text_color: selectedCarousel.text_color || textColor,
-      aspect_ratio: selectedCarousel.aspect_ratio || aspectRatio,
-      accent_color: selectedCarousel.accent_color || accentColor,
-    };
-    setSelectedCarousel(updatedCarousel);
-    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
-    debouncedSave(updatedCarousel);
+    updateDesignProperty('background_color', newColor);
   };
 
   const handleTextColorChange = (newColor: string) => {
-    if (!selectedCarousel) return;
     setTextColor(newColor);
-    const updatedCarousel = { 
-      ...selectedCarousel, 
-      text_color: newColor,
-      chosen_template: selectedCarousel.chosen_template || template,
-      cover_style: selectedCarousel.cover_style || coverStyle,
-      background_color: selectedCarousel.background_color || backgroundColor,
-      aspect_ratio: selectedCarousel.aspect_ratio || aspectRatio,
-      accent_color: selectedCarousel.accent_color || accentColor,
-    };
-    setSelectedCarousel(updatedCarousel);
-    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
-    debouncedSave(updatedCarousel);
+    updateDesignProperty('text_color', newColor);
   };
 
   const handleAccentColorChange = (newColor: string) => {
-    if (!selectedCarousel) return;
     setAccentColor(newColor);
-    const updatedCarousel = { 
-      ...selectedCarousel, 
-      accent_color: newColor,
-      chosen_template: selectedCarousel.chosen_template || template,
-      cover_style: selectedCarousel.cover_style || coverStyle,
-      background_color: selectedCarousel.background_color || backgroundColor,
-      text_color: selectedCarousel.text_color || textColor,
-      aspect_ratio: selectedCarousel.aspect_ratio || aspectRatio,
-    };
-    setSelectedCarousel(updatedCarousel);
-    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
-    debouncedSave(updatedCarousel);
+    updateDesignProperty('accent_color', newColor);
   };
 
   const handleAspectRatioChange = (newAspectRatio: "1:1" | "4:5") => {
-    if (!selectedCarousel) return;
     setAspectRatio(newAspectRatio);
-    const updatedCarousel = { 
-      ...selectedCarousel, 
-      aspect_ratio: newAspectRatio,
-      chosen_template: selectedCarousel.chosen_template || template,
-      cover_style: selectedCarousel.cover_style || coverStyle,
-      background_color: selectedCarousel.background_color || backgroundColor,
-      text_color: selectedCarousel.text_color || textColor,
-      accent_color: selectedCarousel.accent_color || accentColor,
-    };
-    setSelectedCarousel(updatedCarousel);
-    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
-    debouncedSave(updatedCarousel);
+    updateDesignProperty('aspect_ratio', newAspectRatio);
   };
 
   const handleUpdateSlide = (slideIndex: number, updates: Partial<Slide>) => {
@@ -591,11 +641,15 @@ const Dashboard = () => {
           })
           .eq("id", carousel.id);
 
-        toast({
-          title: "נשמר",
-          description: "השינויים נשמרו אוטומטית",
-          duration: 2000,
+        console.log("Design changes saved:", {
+          chosen_template: carousel.chosen_template,
+          cover_style: carousel.cover_style,
+          background_color: carousel.background_color,
+          text_color: carousel.text_color,
+          aspect_ratio: carousel.aspect_ratio,
+          accent_color: carousel.accent_color,
         });
+        // Changes saved silently - no toast notification
       } catch (error) {
         toast({
           title: "שגיאה",
@@ -1009,17 +1063,17 @@ const Dashboard = () => {
                         onDrop={(e) => handleDrop(e, index)}
                         onDragEnd={handleDragEnd}
                       >
-                        <div className={`${isActive ? 'w-[480px] h-[calc(100vh-280px)] max-h-[720px]' : 'w-[400px] h-[calc(100vh-300px)] max-h-[600px]'}`}>
+                        <div className={`${isActive ? 'w-[580px] h-[calc(100vh-240px)] max-h-[820px]' : 'w-[400px] h-[calc(100vh-300px)] max-h-[600px]'}`}>
                           <SlidePreview
                             slide={slide}
-                            template={template}
+                            template={selectedCarousel ? (selectedCarousel.chosen_template as "dark" | "light") || "dark" : "dark"}
                             slideNumber={visualSlideNumber}
                             totalSlides={parseSlides(selectedCarousel.slides).length}
-                            coverStyle={coverStyle}
-                            backgroundColor={backgroundColor}
-                            textColor={textColor}
-                            aspectRatio={aspectRatio}
-                            accentColor={accentColor}
+                            coverStyle={selectedCarousel ? (selectedCarousel.cover_style as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame") || "minimalist" : "minimalist"}
+                            backgroundColor={selectedCarousel ? selectedCarousel.background_color || "#000000" : "#000000"}
+                            textColor={selectedCarousel ? selectedCarousel.text_color || "#FFFFFF" : "#FFFFFF"}
+                            aspectRatio={selectedCarousel ? (selectedCarousel.aspect_ratio as "1:1" | "4:5") || "4:5" : "4:5"}
+                            accentColor={selectedCarousel ? selectedCarousel.accent_color || "#FFFFFF" : "#FFFFFF"}
                             slideIndex={index}
                             isEditing={isActive}
                             onEditStart={() => setSelectedSlideIndex(index)}
@@ -1046,7 +1100,7 @@ const Dashboard = () => {
                               }}
                               disabled={exporting}
                             >
-                              <Download className="h-3 w-3" />
+                              <Download className="h-4 w-4" />
                             </Button>
                             <Button
                               size="sm"
@@ -1057,7 +1111,7 @@ const Dashboard = () => {
                                 handleDuplicateSlide(index);
                               }}
                             >
-                              <Copy className="h-3 w-3" />
+                              <Copy className="h-4 w-4" />
                             </Button>
                             <Button
                               size="sm"
@@ -1068,7 +1122,7 @@ const Dashboard = () => {
                                 handleDeleteSlide(index);
                               }}
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         )}
@@ -1117,34 +1171,61 @@ const Dashboard = () => {
           {/* Bottom Editing Panel */}
           <div className="border-t bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 backdrop-blur-sm p-6 border-t-slate-200/50">
             <div className="max-w-6xl mx-auto">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="flex items-end justify-center gap-6">
                 {/* Template Selection */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">תבנית</label>
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium mb-2">תבנית</label>
                   <Select 
-                    value={selectedCarousel ? template : "dark"} 
+                    value={selectedCarousel ? selectedCarousel.chosen_template || "dark" : "dark"} 
                     onValueChange={handleTemplateChange}
                     disabled={!selectedCarousel}
                   >
-                    <SelectTrigger dir="rtl">
+                    <SelectTrigger dir="rtl" className="w-auto min-w-[100px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent align="end" dir="rtl">
-                      <SelectItem value="dark">תבנית כהה</SelectItem>
-                      <SelectItem value="light">תבנית בהירה</SelectItem>
+                      <SelectItem value="dark">כהה</SelectItem>
+                      <SelectItem value="light">בהירה</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 
-                {/* Cover Style Selection */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">סגנון כריכה</label>
+                {/* Background Color */}
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium mb-2">רקע</label>
+                  <ColorPicker 
+                    color={selectedCarousel ? selectedCarousel.background_color || "#000000" : "#000000"} 
+                    setColor={handleBackgroundColorChange} 
+                    title="רקע" 
+                    disabled={!selectedCarousel}
+                    showLabel={false}
+                  />
+                </div>
+                
+                {/* Text Color */}
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium mb-2">טקסט</label>
+                  <ColorPicker 
+                    color={selectedCarousel ? selectedCarousel.text_color || "#FFFFFF" : "#FFFFFF"} 
+                    setColor={handleTextColorChange} 
+                    title="טקסט" 
+                    disabled={!selectedCarousel}
+                    showLabel={false}
+                  />
+                </div>
+                
+                {/* Separator */}
+                <div className="text-2xl font-bold text-slate-400 mb-2">|</div>
+                
+                {/* Design Style Selection */}
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium mb-2">עיצוב</label>
                   <Select 
-                    value={selectedCarousel ? coverStyle : "minimalist"} 
+                    value={selectedCarousel ? selectedCarousel.cover_style || "minimalist" : "minimalist"} 
                     onValueChange={handleCoverStyleChange}
                     disabled={!selectedCarousel}
                   >
-                    <SelectTrigger dir="rtl">
+                    <SelectTrigger dir="rtl" className="w-auto min-w-[100px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent align="end" dir="rtl">
@@ -1158,48 +1239,30 @@ const Dashboard = () => {
                   </Select>
                 </div>
                 
-                {/* Background Color */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">רקע</label>
-                  <ColorPicker 
-                    color={selectedCarousel ? backgroundColor : "#000000"} 
-                    setColor={handleBackgroundColorChange} 
-                    title="שינוי רקע" 
-                    disabled={!selectedCarousel}
-                  />
-                </div>
-                
-                {/* Text Color */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">טקסט</label>
-                  <ColorPicker 
-                    color={selectedCarousel ? textColor : "#FFFFFF"} 
-                    setColor={handleTextColorChange} 
-                    title="שינוי טקסט" 
-                    disabled={!selectedCarousel}
-                  />
-                </div>
-                
                 {/* Accent Color */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">צבע עיצוב</label>
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium mb-2">צבע עיצוב</label>
                   <ColorPicker 
-                    color={selectedCarousel ? accentColor : "#FFFFFF"} 
+                    color={selectedCarousel ? selectedCarousel.accent_color || "#FFFFFF" : "#FFFFFF"} 
                     setColor={handleAccentColorChange} 
-                    title="שינוי צבע עיצוב" 
+                    title="צבע עיצוב" 
                     disabled={!selectedCarousel}
+                    showLabel={false}
                   />
                 </div>
+                
+                {/* Separator */}
+                <div className="text-2xl font-bold text-slate-400 mb-2">|</div>
                 
                 {/* Aspect Ratio */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">יחס גובה-רוחב</label>
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium mb-2">יחס גובה-רוחב</label>
                   <Select 
-                    value={selectedCarousel ? aspectRatio : "4:5"} 
+                    value={selectedCarousel ? selectedCarousel.aspect_ratio || "4:5" : "4:5"} 
                     onValueChange={handleAspectRatioChange}
                     disabled={!selectedCarousel}
                   >
-                    <SelectTrigger dir="rtl">
+                    <SelectTrigger dir="rtl" className="w-auto min-w-[100px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent align="end" dir="rtl">
@@ -1298,7 +1361,7 @@ const Dashboard = () => {
                           }}
                           disabled={exporting}
                         >
-                          <Download className="h-3 w-3" />
+                          <Download className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
@@ -1309,7 +1372,7 @@ const Dashboard = () => {
                             handleDeleteCarousel(carousel.id);
                           }}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>

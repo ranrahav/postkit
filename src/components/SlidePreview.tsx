@@ -177,9 +177,9 @@ const SlidePreview = ({
           )}
         </div>
 
-        {/* SlideMint logo - smaller and positioned at bottom left */}
-        <div className="absolute bottom-4 left-4 text-sm font-medium opacity-40">
-          SlideMint
+        {/* Post24.ai logo - positioned at bottom right */}
+        <div className="absolute bottom-4 right-4 text-sm font-medium opacity-40">
+          Post24.ai
         </div>
       </div>
     </div>
