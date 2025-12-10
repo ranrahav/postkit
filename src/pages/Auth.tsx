@@ -22,16 +22,6 @@ const Auth = () => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Check if we're coming from OAuth redirect
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const error = urlParams.get('error');
-        
-        if (code || error) {
-          // Clear the URL parameters
-          window.history.replaceState({}, document.title, '/dashboard');
-        }
-        
         navigate("/dashboard");
       }
     };
@@ -154,7 +144,6 @@ const Auth = () => {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
-          skipBrowserRedirect: false,
         },
       });
 
