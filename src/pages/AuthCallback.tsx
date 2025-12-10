@@ -9,12 +9,31 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+        // Get session from URL hash (implicit flow)
+        const { data, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error("Auth callback error:", error);
           navigate("/");
           return;
+        }
+        
+        // If no session, try to get it from the URL
+        if (!data.session) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          
+          if (accessToken) {
+            // Wait a moment for Supabase to process the session
+            setTimeout(() => {
+              navigate("/dashboard");
+            }, 1000);
+            return;
+          } else {
+            console.error("No access token found in URL");
+            navigate("/");
+            return;
+          }
         }
         
         // Successfully authenticated, redirect to dashboard

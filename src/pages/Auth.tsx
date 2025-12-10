@@ -144,6 +144,7 @@ const Auth = () => {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          flowType: 'implicit', // Use implicit flow instead of PKCE
         },
       });
 
