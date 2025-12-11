@@ -1,7 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <!-- Blue background -->
-  <rect width="32" height="32" fill="#3B82F6" rx="4"/>
+  <!-- Gradient background -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563EB"/>
+      <stop offset="100%" style="stop-color:#9333EA"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" fill="url(#bgGradient)" rx="6"/>
   
-  <!-- White "24" text -->
-  <text x="16" y="22" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">24</text>
+  <!-- White palette icon -->
+  <g transform="translate(8, 8)">
+    <path d="M8 0C3.5817 0 0 3.5817 0 8C0 12.4183 3.5817 16 8 16C9.6569 16 11.1569 15.4477 12.3023 14.5557L10.7465 13C10.0157 13.6328 9.0527 14 8 14C4.6863 14 2 11.3137 2 8C2 4.6863 4.6863 2 8 2C11.3137 2 14 4.6863 14 8C14 9.0527 13.6328 10.0157 13 10.7465L14.5557 12.3023C15.4477 11.1569 16 9.6569 16 8C16 3.5817 12.4183 0 8 0ZM8 4C5.7909 4 4 5.7909 4 8C4 10.2091 5.7909 12 8 12C8.7473 12 9.4455 11.7886 10.0414 11.4172L8.6243 10C8.4179 10.0035 8.2095 10 8 10C6.8954 10 6 9.1046 6 8C6 6.8954 6.8954 6 8 6C9.1046 6 10 6.8954 10 8C10 8.2095 10.0035 8.4179 10 8.6243L11.4172 10.0414C11.7886 9.4455 12 8.7473 12 8C12 5.7909 10.2091 4 8 4Z" fill="white"/>
+    <circle cx="8" cy="8" r="2" fill="white"/>
+  </g>
 </svg>

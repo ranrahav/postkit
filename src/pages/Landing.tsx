@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { FileText, Sparkles, Download } from "lucide-react";
+import { ArrowRight, Palette, Sparkles, Clock, Image, Zap, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -37,99 +37,71 @@ const Landing = () => {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-slate-50 to-white">
       {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent">
-            SlideMint
-          </h1>
-          <div className="flex gap-2">
-            {isLoggedIn ? (
-              <>
-                <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-                  לוח בקרה
-                </Button>
-                <Button variant="ghost" onClick={handleSignOut}>
-                  יציאה
-                </Button>
-              </>
-            ) : (
-              <Button variant="ghost" onClick={() => navigate("/auth")}>
-                התחברות
-              </Button>
-            )}
+      <header className="absolute top-0 w-full z-50 bg-white/10 backdrop-blur-sm border-b border-white/20">
+        <div className="container mx-auto px-6 py-6 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <Palette className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-2xl font-semibold text-slate-900">Post24</h1>
           </div>
+          {isLoggedIn ? (
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+                לוח בקרה
+              </Button>
+              <Button variant="ghost" onClick={handleSignOut}>
+                יציאה
+              </Button>
+            </div>
+          ) : (
+            <Button variant="ghost" onClick={() => navigate("/auth")}>
+              התחברות
+            </Button>
+          )}
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-6xl md:text-7xl font-bold mb-4 bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent leading-tight">
-          צרו קרוסלות LinkedIn מקצועיות בקלות
-        </h1>
-        <p className="text-2xl text-muted-foreground mb-6 max-w-3xl mx-auto font-medium">
-          הדביקו טקסט, בחרו עיצוב, וקבלו קרוסלה מוכנה להורדה תוך שניות
-        </p>
-        <Button size="lg" onClick={handleGetStarted} className="text-xl px-12 py-7 shadow-lg hover:shadow-xl transition-shadow">
-          התחילו חינם
-        </Button>
-      </section>
-
-      {/* Features Section */}
-      <section className="container mx-auto px-4 py-6">
-        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-            <div className="mb-3 flex justify-center">
-              <FileText className="h-10 w-10 text-primary" />
+      <main>
+        <section className="relative min-h-screen flex items-center justify-center px-6">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-transparent to-purple-50/30 pointer-events-none" />
+          
+          <div className="relative z-10 text-center max-w-6xl mx-auto">
+            {/* Logo and Brand */}
+            <div className="mb-12 flex justify-center">
+              <div className="w-32 h-32 bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl flex items-center justify-center shadow-2xl hover:scale-105 transition-transform duration-300">
+                <Palette className="h-16 w-16 text-white" />
+              </div>
             </div>
-            <h3 className="text-xl font-semibold mb-2">הדביקו טקסט</h3>
-            <p className="text-muted-foreground text-sm">
-              העתיקו את התוכן שלכם והבינה המלאכותית תיצור מבנה קרוסלה מקצועי
+
+            <h1 className="text-7xl md:text-9xl font-bold mb-8 text-slate-900 leading-tight">
+              Post24
+            </h1>
+            
+            <p className="text-4xl md:text-5xl text-slate-600 mb-16 font-light leading-relaxed">
+              יוצרים את <span className="font-semibold text-slate-900">החלק הוויזואלי</span> של כל פוסט
             </p>
-          </Card>
 
-          <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-            <div className="mb-3 flex justify-center">
-              <Sparkles className="h-10 w-10 text-accent" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">בחרו עיצוב</h3>
-            <p className="text-muted-foreground text-sm">
-              התאימו אישית את סגנון הקרוסלה, צבעים ותבניות עיצוב
-            </p>
-          </Card>
+            {/* Single CTA Button */}
+            <Button 
+              size="lg" 
+              onClick={handleGetStarted}
+              className="text-2xl px-16 py-8 h-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-2xl hover:shadow-3xl transition-all duration-300"
+            >
+              <span>בואו נתחיל</span>
+            </Button>
+          </div>
 
-          <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-            <div className="mb-3 flex justify-center">
-              <Download className="h-10 w-10 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">הורידו קרוסלה</h3>
-            <p className="text-muted-foreground text-sm">
-              ייצאו את הקרוסלה כ-PNG או PDF והעלו ל-LinkedIn
-            </p>
-          </Card>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="container mx-auto px-4 py-6 text-center">
-        <Card className="max-w-3xl mx-auto p-8 bg-gradient-to-br from-primary/10 to-accent/10 border-2 border-primary/20">
-          <h2 className="text-3xl font-bold mb-3">מוכנים להתחיל?</h2>
-          <p className="text-muted-foreground mb-5 text-lg">
-            הצטרפו לאלפי משתמשים שכבר יצרו קרוסלות מרשימות
-          </p>
-          <Button size="lg" onClick={handleGetStarted} className="text-lg px-10 py-6">
-            צרו את הקרוסלה הראשונה שלכם
-          </Button>
-        </Card>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t py-8">
-        <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>© 2024 SlideMint. כל הזכויות שמורות.</p>
-        </div>
-      </footer>
+          {/* Decorative elements */}
+          <div className="absolute bottom-20 left-20 w-64 h-64 bg-gradient-to-br from-blue-200 to-purple-200 rounded-full opacity-20 blur-3xl" />
+          <div className="absolute top-40 right-40 w-80 h-80 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full opacity-20 blur-3xl" />
+          <div className="absolute top-1/3 left-1/4 w-48 h-48 bg-gradient-to-br from-pink-200 to-orange-200 rounded-full opacity-15 blur-2xl" />
+          <div className="absolute bottom-1/3 right-1/4 w-56 h-56 bg-gradient-to-br from-blue-300 to-cyan-200 rounded-full opacity-15 blur-2xl" />
+        </section>
+      </main>
     </div>
   );
 };
