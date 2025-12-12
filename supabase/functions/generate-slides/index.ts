@@ -6,6 +6,7 @@ const allowedOrigins = [
   'http://localhost:8083',
   'https://postkit-five.vercel.app',
   'https://postkit-git-main-ranrahavs-projects.vercel.app',
+  'https://post24beta.vercel.app',
   'https://postkit-*.vercel.app' // This is a wildcard for Vercel preview deployments
 ];
 
