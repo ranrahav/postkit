@@ -19,6 +19,7 @@ interface SlidePreviewProps {
   onEditStart: () => void;
   onEditEnd: () => void;
   showSlideNumber?: boolean;
+  textDirection: "ltr" | "rtl";
 }
 
 const SlidePreview = ({ 
@@ -35,7 +36,8 @@ const SlidePreview = ({
   isEditing,
   onEditStart,
   onEditEnd,
-  showSlideNumber = true
+  showSlideNumber = true,
+  textDirection
 }: SlidePreviewProps) => {
   const [editingField, setEditingField] = useState<'title' | 'body' | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -133,10 +135,11 @@ const SlidePreview = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col justify-center relative z-10">
+        <div className="flex-1 flex flex-col justify-center relative z-10" dir={textDirection}>
           {editingField === 'title' ? (
             <input
               type="text"
+              dir={textDirection}
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onBlur={handleSave}
@@ -158,6 +161,7 @@ const SlidePreview = ({
 
           {editingField === 'body' ? (
             <textarea
+              dir={textDirection}
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onBlur={handleSave}

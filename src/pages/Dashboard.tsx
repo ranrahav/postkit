@@ -34,6 +34,65 @@ interface Carousel {
   updated_at: string;
 }
 
+// Welcome carousel content for new users
+const welcomeCarousel: Carousel = {
+  id: 'welcome-carousel',
+  carousel_name: 'Welcome to Post24',
+  slides: [
+    {
+      index: 0,
+      title: 'Welcome to Post24',
+      body: 'Your visual content creation platform for stunning LinkedIn carousels. Let us show you around!'
+    },
+    {
+      index: 1,
+      title: 'Create Your First Carousel',
+      body: 'Click "New Carousel" in the right panel to start. Paste your content and we\'ll structure it into beautiful slides.'
+    },
+    {
+      index: 2,
+      title: 'Customize Your Design',
+      body: 'Use the bottom panel to adjust colors, templates, styles, and aspect ratios. Make your carousel uniquely yours!'
+    },
+    {
+      index: 3,
+      title: 'Edit Individual Slides',
+      body: 'Click any slide in the center to edit its content directly. Add, duplicate, or remove slides as needed.'
+    },
+    {
+      index: 4,
+      title: 'Export & Share',
+      body: 'Ready to share? Export your carousel as PNG images and post directly to LinkedIn or other platforms.'
+    },
+    {
+      index: 5,
+      title: 'You\'re Ready!',
+      body: 'Start creating amazing visual content. Your audience will love the professional carousels you can make with Post24!'
+    }
+  ],
+  chosen_template: 'dark',
+  cover_style: 'gradient_overlay',
+  background_color: '#000000',
+  text_color: '#FFFFFF',
+  accent_color: '#3B82F6',
+  aspect_ratio: '4:5',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
+};
+
+// Function to detect if text is primarily Hebrew (RTL) or English (LTR)
+const detectTextDirection = (text: string): "ltr" | "rtl" => {
+  if (!text || text.trim() === '') return "ltr";
+  
+  // Count Hebrew characters (Unicode range for Hebrew)
+  const hebrewChars = text.match(/[\u0590-\u05FF]/g) || [];
+  const totalChars = text.replace(/\s/g, '').length; // Remove spaces from count
+  
+  // If more than 30% of non-space characters are Hebrew, use RTL
+  const hebrewRatio = totalChars > 0 ? hebrewChars.length / totalChars : 0;
+  return hebrewRatio > 0.3 ? "rtl" : "ltr";
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -44,6 +103,7 @@ const Dashboard = () => {
   const [carousels, setCarousels] = useState<Carousel[]>([]);
   const [selectedCarousel, setSelectedCarousel] = useState<Carousel | null>(null);
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(0);
+  const [isNewUser, setIsNewUser] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -250,17 +310,28 @@ const Dashboard = () => {
         slides: parseSlides(carousel.slides),
       }));
       
-      setCarousels(parsedCarousels);
-      console.log("📦 Carousels reloaded from server:", parsedCarousels.length);
+      // Check if user is new (no carousels) and add welcome carousel
+      const isUserNew = parsedCarousels.length === 0;
+      setIsNewUser(isUserNew);
+      
+      let finalCarousels = parsedCarousels;
+      if (isUserNew) {
+        // Add welcome carousel at the beginning
+        finalCarousels = [welcomeCarousel, ...parsedCarousels];
+        console.log("🎉 New user detected, adding welcome carousel");
+      }
+      
+      setCarousels(finalCarousels);
+      console.log("📦 Carousels reloaded from server:", finalCarousels.length);
       
       // Only select first carousel if no carousel is currently selected
-      if (parsedCarousels && parsedCarousels.length > 0 && !selectedCarousel) {
+      if (finalCarousels && finalCarousels.length > 0 && !selectedCarousel) {
         console.log("🎯 No carousel selected, selecting first one");
-        selectCarousel(parsedCarousels[0]);
+        selectCarousel(finalCarousels[0]);
       } else if (selectedCarousel) {
         console.log("🎯 Preserving currently selected carousel:", selectedCarousel.id);
         // Find the updated version of the currently selected carousel
-        const updatedSelectedCarousel = parsedCarousels.find(c => c.id === selectedCarousel.id);
+        const updatedSelectedCarousel = finalCarousels.find(c => c.id === selectedCarousel.id);
         if (updatedSelectedCarousel) {
           selectCarousel(updatedSelectedCarousel);
         }
@@ -385,7 +456,7 @@ const Dashboard = () => {
           slides: data.slides,
           chosen_template: "dark",
           cover_style: newCarouselCoverStyle,
-          carousel_name: data.slides[0]?.title || "קרוסלה ללא שם",
+          carousel_name: data.slides[0]?.title || "Untitled Carousel",
           background_color: "#000000",
           text_color: "#FFFFFF",
           accent_color: "#FFFFFF",
@@ -438,7 +509,7 @@ const Dashboard = () => {
   };
 
   const handleDeleteCarousel = async (id: string) => {
-    if (!confirm("האם אתה בטוח שברצונך למחוק קרוסלה זו?")) {
+    if (!confirm("Are you sure you want to delete this carousel?")) {
       return;
     }
 
@@ -473,14 +544,14 @@ const Dashboard = () => {
       }
 
       toast({
-        title: "נמחק בהצלחה",
-        description: "הקרוסלה נמחקה",
+        title: "Deleted successfully",
+        description: "The carousel has been deleted",
       });
     } catch (error) {
       console.error("Error deleting carousel:", error);
       toast({
-        title: "שגיאה",
-        description: "לא ניתן למחוק את הקרוסלה",
+        title: "Error",
+        description: "Could not delete the carousel",
         variant: "destructive",
       });
     }
@@ -667,8 +738,8 @@ const Dashboard = () => {
     const slides = parseSlides(selectedCarousel.slides);
     const newSlide: Slide = {
       index: slides.length,
-      title: "כותרת חדשה",
-      body: "תוכן חדש"
+      title: "New Title",
+      body: "New content"
     };
     
     const updatedSlides = [...slides, newSlide];
@@ -793,6 +864,7 @@ const Dashboard = () => {
               onEditEnd: () => {},
               onUpdateSlide: () => {},
               showSlideNumber: false,
+              textDirection: detectTextDirection(slides[i].title + " " + slides[i].body)
             })
           );
           
@@ -923,6 +995,7 @@ const Dashboard = () => {
           onEditEnd: () => {},
           onUpdateSlide: () => {},
           showSlideNumber: false,
+          textDirection: detectTextDirection(slide.title + " " + slide.body)
         })
       );
       
@@ -987,7 +1060,12 @@ const Dashboard = () => {
       slide.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       slide.body.toLowerCase().includes(searchQuery.toLowerCase())
     )
-  );
+  ).sort((a, b) => {
+    // Put welcome carousel at the bottom
+    if (a.id === 'welcome-carousel') return 1;
+    if (b.id === 'welcome-carousel') return -1;
+    return 0;
+  });
 
   if (loading) {
     return (
@@ -1000,7 +1078,7 @@ const Dashboard = () => {
   return (
     <div dir="rtl" className="min-h-screen bg-gradient-to-b from-background to-muted">
       {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+      <header dir="ltr" className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -1011,7 +1089,7 @@ const Dashboard = () => {
             </h1>
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
-            יציאה
+            Sign Out
           </Button>
         </div>
       </header>
@@ -1031,17 +1109,19 @@ const Dashboard = () => {
                     style={{ scrollBehavior: 'smooth', msOverflowStyle: 'none', scrollbarWidth: 'none' }}
                   >
                     {/* Add New Slide Button */}
-                    <div className="flex-shrink-0">
-                      <button
-                        onClick={handleAddNewSlide}
-                        className="w-[400px] h-[calc(100vh-300px)] max-h-[600px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 group"
-                      >
-                        <div className="text-center">
-                          <Plus className="w-12 h-12 mx-auto mb-2 text-slate-400 group-hover:text-slate-600 transition-colors" />
-                          <p className="text-slate-500 group-hover:text-slate-700 transition-colors">הוסף שקופית חדשה</p>
-                        </div>
-                      </button>
-                    </div>
+                    {selectedCarousel?.id !== 'welcome-carousel' && (
+                      <div className="flex-shrink-0">
+                        <button
+                          onClick={handleAddNewSlide}
+                          className="w-[400px] h-[calc(100vh-300px)] max-h-[600px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 group"
+                        >
+                          <div className="text-center">
+                            <Plus className="w-12 h-12 mx-auto mb-2 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                            <p className="text-slate-500 group-hover:text-slate-700 transition-colors">Add New Slide</p>
+                          </div>
+                        </button>
+                      </div>
+                    )}
                     
                     {parseSlides(selectedCarousel.slides).slice().reverse().map((slide, reverseIndex) => {
                       const index = parseSlides(selectedCarousel.slides).length - 1 - reverseIndex;
@@ -1080,11 +1160,12 @@ const Dashboard = () => {
                             aspectRatio={selectedCarousel ? (selectedCarousel.aspect_ratio as "1:1" | "4:5") || "4:5" : "4:5"}
                             accentColor={selectedCarousel ? selectedCarousel.accent_color || "#FFFFFF" : "#FFFFFF"}
                             slideIndex={index}
-                            isEditing={isActive}
-                            onEditStart={() => setSelectedSlideIndex(index)}
+                            isEditing={isActive && selectedCarousel?.id !== 'welcome-carousel'}
+                            onEditStart={() => selectedCarousel?.id !== 'welcome-carousel' && setSelectedSlideIndex(index)}
                             onEditEnd={() => {}}
-                            onUpdateSlide={(updates) => handleUpdateSlide(index, updates)}
+                            onUpdateSlide={(updates) => selectedCarousel?.id !== 'welcome-carousel' && handleUpdateSlide(index, updates)}
                             showSlideNumber={false}
+                            textDirection={detectTextDirection(slide.title + " " + slide.body)}
                           />
                           {/* Slide count below the slide */}
                           <div className="text-center mt-2 text-sm font-medium text-slate-600">
@@ -1093,7 +1174,7 @@ const Dashboard = () => {
                         </div>
                         
                         {/* Slide Actions */}
-                        {isActive && (
+                        {isActive && selectedCarousel?.id !== 'welcome-carousel' && (
                           <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
                             <Button
                               size="sm"
@@ -1160,13 +1241,13 @@ const Dashboard = () => {
             ) : (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center space-y-4">
-                  <h3 className="text-xl font-semibold">בחר קרוסלה לעריכה</h3>
+                  <h3 className="text-xl font-semibold">Select a carousel to edit</h3>
                   <p className="text-muted-foreground">
-                    בחר קרוסלה מהרשימה או צור קרוסלה חדשה כדי להתחיל
+                    Choose a carousel from the list or create a new one to get started
                   </p>
                   <Button onClick={() => setCreateModalOpen(true)}>
                     <Plus className="ml-2 h-4 w-4" />
-                    צור קרוסלה חדשה
+                    Create New Carousel
                   </Button>
                 </div>
               </div>
@@ -1174,34 +1255,34 @@ const Dashboard = () => {
           </div>
 
           {/* Bottom Editing Panel */}
-          <div className="border-t bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 backdrop-blur-sm p-6 border-t-slate-200/50">
+          <div dir="ltr" className="border-t bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 backdrop-blur-sm p-6 border-t-slate-200/50">
             <div className="max-w-6xl mx-auto">
               <div className="flex items-end justify-center gap-6">
                 {/* Template Selection */}
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">תבנית</label>
+                  <label className="text-sm font-medium mb-2">Template</label>
                   <Select 
                     value={selectedCarousel ? selectedCarousel.chosen_template || "dark" : "dark"} 
                     onValueChange={handleTemplateChange}
                     disabled={!selectedCarousel}
                   >
-                    <SelectTrigger dir="rtl" className="w-auto min-w-[100px]">
+                    <SelectTrigger dir="ltr" className="w-auto min-w-[100px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent align="end" dir="rtl">
-                      <SelectItem value="dark">כהה</SelectItem>
-                      <SelectItem value="light">בהירה</SelectItem>
+                    <SelectContent align="end" dir="ltr">
+                      <SelectItem value="dark">Dark</SelectItem>
+                      <SelectItem value="light">Light</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 
                 {/* Background Color */}
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">רקע</label>
+                  <label className="text-sm font-medium mb-2">Background</label>
                   <ColorPicker 
                     color={selectedCarousel ? selectedCarousel.background_color || "#000000" : "#000000"} 
                     setColor={handleBackgroundColorChange} 
-                    title="רקע" 
+                    title="Background" 
                     disabled={!selectedCarousel}
                     showLabel={false}
                   />
@@ -1209,11 +1290,11 @@ const Dashboard = () => {
                 
                 {/* Text Color */}
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">טקסט</label>
+                  <label className="text-sm font-medium mb-2">Text</label>
                   <ColorPicker 
                     color={selectedCarousel ? selectedCarousel.text_color || "#FFFFFF" : "#FFFFFF"} 
                     setColor={handleTextColorChange} 
-                    title="טקסט" 
+                    title="Text" 
                     disabled={!selectedCarousel}
                     showLabel={false}
                   />
@@ -1224,33 +1305,33 @@ const Dashboard = () => {
                 
                 {/* Design Style Selection */}
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">עיצוב</label>
+                  <label className="text-sm font-medium mb-2">Style</label>
                   <Select 
                     value={selectedCarousel ? selectedCarousel.cover_style || "minimalist" : "minimalist"} 
                     onValueChange={handleCoverStyleChange}
                     disabled={!selectedCarousel}
                   >
-                    <SelectTrigger dir="rtl" className="w-auto min-w-[100px]">
+                    <SelectTrigger dir="ltr" className="w-auto min-w-[100px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent align="end" dir="rtl">
-                      <SelectItem value="minimalist">מינימליסטי</SelectItem>
-                      <SelectItem value="big_number">מספר בולט</SelectItem>
-                      <SelectItem value="accent_block">אלמנט דקורטיבי</SelectItem>
-                      <SelectItem value="gradient_overlay">גרדיאנט</SelectItem>
-                      <SelectItem value="geometric">גיאומטרי</SelectItem>
-                      <SelectItem value="bold_frame">מסגרת בולטת</SelectItem>
+                    <SelectContent align="end" dir="ltr">
+                      <SelectItem value="minimalist">Minimalist</SelectItem>
+                      <SelectItem value="big_number">Big Number</SelectItem>
+                      <SelectItem value="accent_block">Accent Block</SelectItem>
+                      <SelectItem value="gradient_overlay">Gradient</SelectItem>
+                      <SelectItem value="geometric">Geometric</SelectItem>
+                      <SelectItem value="bold_frame">Bold Frame</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 
                 {/* Accent Color */}
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">צבע עיצוב</label>
+                  <label className="text-sm font-medium mb-2">Accent</label>
                   <ColorPicker 
                     color={selectedCarousel ? selectedCarousel.accent_color || "#FFFFFF" : "#FFFFFF"} 
                     setColor={handleAccentColorChange} 
-                    title="צבע עיצוב" 
+                    title="Accent" 
                     disabled={!selectedCarousel}
                     showLabel={false}
                   />
@@ -1261,16 +1342,16 @@ const Dashboard = () => {
                 
                 {/* Aspect Ratio */}
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">יחס גובה-רוחב</label>
+                  <label className="text-sm font-medium mb-2">Aspect Ratio</label>
                   <Select 
                     value={selectedCarousel ? selectedCarousel.aspect_ratio || "4:5" : "4:5"} 
                     onValueChange={handleAspectRatioChange}
                     disabled={!selectedCarousel}
                   >
-                    <SelectTrigger dir="rtl" className="w-auto min-w-[100px]">
+                    <SelectTrigger dir="ltr" className="w-auto min-w-[100px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent align="end" dir="rtl">
+                    <SelectContent align="end" dir="ltr">
                       <SelectItem value="1:1">1:1</SelectItem>
                       <SelectItem value="4:5">4:5</SelectItem>
                     </SelectContent>
@@ -1286,12 +1367,13 @@ const Dashboard = () => {
           {/* Search and Add */}
           <div className="p-4 border-b space-y-3 bg-white/50 backdrop-blur-sm border-b-slate-200/30">
             <div className="relative">
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="חפש קרוסלה..."
+                dir="ltr"
+                placeholder="Search carousel..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-10"
+                className="pl-10"
               />
             </div>
             <Button
@@ -1300,7 +1382,7 @@ const Dashboard = () => {
               size="sm"
             >
               <Plus className="ml-2 h-4 w-4" />
-              קרוסלה חדשה
+              New Carousel
             </Button>
           </div>
 
@@ -1309,7 +1391,7 @@ const Dashboard = () => {
             <div className="px-4 py-2 border-b bg-white/30 backdrop-blur-sm border-b-slate-200/30">
               <div className="text-center">
                 <span className="text-sm font-medium text-slate-700">
-                  {profile.carousel_count}/10 קרוסלות
+                  {profile.carousel_count}/10 Carousels
                 </span>
               </div>
             </div>
@@ -1319,19 +1401,20 @@ const Dashboard = () => {
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {filteredCarousels.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">לא נמצאו קרוסלות</p>
+                <p className="text-muted-foreground mb-4">No carousels found</p>
                 <Button
                   onClick={() => setCreateModalOpen(true)}
                   variant="outline"
                   size="sm"
                 >
                   <Plus className="ml-2 h-4 w-4" />
-                  צור קרוסלה ראשונה
+                  Create First Carousel
                 </Button>
               </div>
             ) : (
               filteredCarousels.map((carousel) => {
                 const firstSlide = parseSlides(carousel.slides)[0];
+                const isWelcomeCarousel = carousel.id === 'welcome-carousel';
                 return (
                   <Card
                     key={carousel.id}
@@ -1339,46 +1422,51 @@ const Dashboard = () => {
                       selectedCarousel?.id === carousel.id
                         ? "ring-2 ring-accent bg-accent/5"
                         : "hover:bg-muted/50"
+                    } ${
+                      isWelcomeCarousel ? 'border-blue-200 bg-blue-50/30' : ''
                     }`}
                     onClick={() => selectCarousel(carousel)}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate text-sm mb-1">
-                          {firstSlide?.title || "ללא כותרת"}
+                      <div className="flex-1 min-w-0" style={{ direction: detectTextDirection(firstSlide?.title || "Untitled") }}>
+                        <h3 className="font-semibold text-sm mb-1 truncate" style={{ textAlign: detectTextDirection(firstSlide?.title || "Untitled") === "rtl" ? "right" : "left" }}>
+                          {firstSlide?.title || "Untitled"}
                         </h3>
-                        <p className="text-xs text-muted-foreground">
-                          {parseSlides(carousel.slides).length} שקופיות •{" "}
+                        <p className="text-xs text-muted-foreground" style={{ textAlign: detectTextDirection(firstSlide?.title || "Untitled") === "rtl" ? "right" : "left" }}>
+                          {parseSlides(carousel.slides).length} slides • {" "}
                           {formatDistanceToNow(new Date(carousel.created_at), {
                             addSuffix: true,
-                            locale: he,
                           })}
                         </p>
                       </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleExportCarousel(carousel);
-                          }}
-                          disabled={exporting}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCarousel(carousel.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div className="flex gap-1 flex-shrink-0">
+                        {!isWelcomeCarousel && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleExportCarousel(carousel);
+                              }}
+                              disabled={exporting}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCarousel(carousel.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </Card>
@@ -1392,10 +1480,10 @@ const Dashboard = () => {
       {/* Create Carousel Modal */}
       {createModalOpen && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto" dir="ltr">
             <div className="p-6 space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">צור קרוסלה חדשה</h2>
+                <h2 className="text-2xl font-bold">Create New Carousel</h2>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1407,48 +1495,48 @@ const Dashboard = () => {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">סגנון תוכן</label>
+                  <label className="text-sm font-medium">Content Style</label>
                   <select
                     value={newCarouselStyle}
                     onChange={(e) => setNewCarouselStyle(e.target.value)}
                     className="w-full px-3 py-2 border border-input rounded-md bg-background"
                     disabled={creatingCarousel}
                   >
-                    <option value="Professional">מקצועי</option>
-                    <option value="Storytelling">סיפורי</option>
-                    <option value="Educational">חינוכי</option>
-                    <option value="List / Tips">רשימה / טיפים</option>
+                    <option value="Professional">Professional</option>
+                    <option value="Storytelling">Storytelling</option>
+                    <option value="Educational">Educational</option>
+                    <option value="List / Tips">List / Tips</option>
                   </select>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">סגנון עטיפה</label>
+                  <label className="text-sm font-medium">Cover Style</label>
                   <select
                     value={newCarouselCoverStyle}
                     onChange={(e) => setNewCarouselCoverStyle(e.target.value as any)}
                     className="w-full px-3 py-2 border border-input rounded-md bg-background"
                     disabled={creatingCarousel}
                   >
-                    <option value="minimalist">מינימליסטי</option>
-                    <option value="big_number">מספר בולט</option>
-                    <option value="accent_block">אלמנט דקורטיבי</option>
-                    <option value="gradient_overlay">גרדיאנט</option>
-                    <option value="geometric">גיאומטרי</option>
-                    <option value="bold_frame">מסגרת בולטת</option>
+                    <option value="minimalist">Minimalist</option>
+                    <option value="big_number">Big Number</option>
+                    <option value="accent_block">Accent Block</option>
+                    <option value="gradient_overlay">Gradient</option>
+                    <option value="geometric">Geometric</option>
+                    <option value="bold_frame">Bold Frame</option>
                   </select>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">טקסט התוכן</label>
+                  <label className="text-sm font-medium">Content Text</label>
                   <Textarea
-                    placeholder="הדבק כאן פוסט, מאמר או רעיון, בעברית או באנגלית..."
+                    placeholder="Paste a post, article, or idea here, in Hebrew or English..."
                     value={newCarouselText}
                     onChange={(e) => setNewCarouselText(e.target.value)}
                     className="min-h-[200px] text-base resize-none"
                     disabled={creatingCarousel}
                   />
                   <div className="text-sm text-muted-foreground">
-                    {newCarouselText.trim().split(/\s+/).filter(word => word.length > 0).length} מילים
+                    {newCarouselText.trim().split(/\s+/).filter(word => word.length > 0).length} words
                   </div>
                 </div>
               </div>
@@ -1460,7 +1548,7 @@ const Dashboard = () => {
                   disabled={creatingCarousel}
                   className="flex-1"
                 >
-                  ביטול
+                  Cancel
                 </Button>
                 <Button
                   onClick={handleCreateCarousel}
@@ -1470,10 +1558,10 @@ const Dashboard = () => {
                   {creatingCarousel ? (
                     <>
                       <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                      יוצר קרוסלה...
+                      Creating carousel...
                     </>
                   ) : (
-                    "צור מבנה שקופיות"
+                    "Create Slide Structure"
                   )}
                 </Button>
               </div>
@@ -1487,8 +1575,8 @@ const Dashboard = () => {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="p-8 text-center">
             <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-lg font-semibold">מייצא...</p>
-            <p className="text-sm text-muted-foreground mt-2">זה עשוי לקחת כמה שניות</p>
+            <p className="text-lg font-semibold">Exporting...</p>
+            <p className="text-sm text-muted-foreground mt-2">This may take a few seconds</p>
           </Card>
         </div>
       )}

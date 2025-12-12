@@ -37,7 +37,7 @@ const Landing = () => {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-slate-50 to-white">
+    <div dir="ltr" className="min-h-screen bg-gradient-to-br from-slate-50 to-white">
       {/* Header */}
       <header className="absolute top-0 w-full z-50 bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="container mx-auto px-6 py-6 flex justify-between items-center">
@@ -50,15 +50,15 @@ const Landing = () => {
           {isLoggedIn ? (
             <div className="flex gap-2">
               <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-                לוח בקרה
+                Dashboard
               </Button>
               <Button variant="ghost" onClick={handleSignOut}>
-                יציאה
+                Sign Out
               </Button>
             </div>
           ) : (
             <Button variant="ghost" onClick={() => navigate("/auth")}>
-              התחברות
+              Sign In
             </Button>
           )}
         </div>
@@ -82,7 +82,7 @@ const Landing = () => {
             </h1>
             
             <p className="text-4xl md:text-5xl text-slate-600 mb-16 font-light leading-relaxed">
-              יוצרים את <span className="font-semibold text-slate-900">החלק הוויזואלי</span> של כל פוסט
+              Creating <span className="font-semibold text-slate-900">the visual part</span> of your posts
             </p>
 
             {/* Single CTA Button */}
@@ -91,7 +91,7 @@ const Landing = () => {
               onClick={handleGetStarted}
               className="text-2xl px-16 py-8 h-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-2xl hover:shadow-3xl transition-all duration-300"
             >
-              <span>בואו נתחיל</span>
+              <span>Let's Get Started</span>
             </Button>
           </div>
 

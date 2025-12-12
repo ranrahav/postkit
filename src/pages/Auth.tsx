@@ -165,7 +165,7 @@ const Auth = () => {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+    <div dir="ltr" className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8 space-y-6">
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-4">
@@ -178,17 +178,17 @@ const Auth = () => {
           </h1>
           <p className="text-muted-foreground">
             {forgotPassword
-              ? "איפוס סיסמה"
+              ? "Reset Password"
               : isLogin
-              ? "התחבר לחשבון שלך"
-              : "צור חשבון חדש"}
+              ? "Sign in to your account"
+              : "Create a new account"}
           </p>
         </div>
 
         {forgotPassword ? (
           <form onSubmit={handlePasswordReset} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="reset-email">אימייל</Label>
+              <Label htmlFor="reset-email">Email</Label>
               <Input
                 id="reset-email"
                 type="email"
@@ -204,10 +204,10 @@ const Auth = () => {
               {loading ? (
                 <>
                   <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                  שולח...
+                  Sending...
                 </>
               ) : (
-                "שלח קישור לאיפוס"
+                "Send Reset Link"
               )}
             </Button>
 
@@ -218,7 +218,7 @@ const Auth = () => {
               onClick={() => setForgotPassword(false)}
               disabled={loading}
             >
-              חזרה להתחברות
+              Back to Sign In
             </Button>
           </form>
         ) : (
@@ -249,7 +249,7 @@ const Auth = () => {
                   fill="#EA4335"
                 />
               </svg>
-              {isLogin ? "התחבר עם Google" : "הירשם עם Google"}
+              {isLogin ? "Sign in with Google" : "Sign up with Google"}
             </Button>
 
             <div className="relative">
@@ -258,14 +258,14 @@ const Auth = () => {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">
-                  או
+                  Or
                 </span>
               </div>
             </div>
 
             {/* Email form below */}
             <div className="space-y-2">
-              <Label htmlFor="email">אימייל</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -278,7 +278,7 @@ const Auth = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">סיסמה</Label>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -298,7 +298,7 @@ const Auth = () => {
                 className="text-sm text-primary hover:underline"
                 disabled={loading}
               >
-                שכחתי סיסמה
+                Forgot Password?
               </button>
             )}
 
@@ -306,10 +306,10 @@ const Auth = () => {
               {loading ? (
                 <>
                   <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                  מעבד...
+                  Processing...
                 </>
               ) : (
-                isLogin ? "התחבר" : "הירשם"
+                isLogin ? "Sign In" : "Sign Up"
               )}
             </Button>
           </form>
@@ -323,7 +323,7 @@ const Auth = () => {
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               disabled={loading}
             >
-              {isLogin ? "אין לך חשבון? הירשם כאן" : "יש לך כבר חשבון? התחבר כאן"}
+              {isLogin ? "Don't have an account? Sign up here" : "Already have an account? Sign in here"}
             </button>
           </div>
         )}
@@ -334,7 +334,7 @@ const Auth = () => {
             onClick={() => navigate("/")}
             disabled={loading}
           >
-            חזרה לדף הבית
+            Back to Home
           </Button>
           
           {/* Hidden manual login clear button for now */}

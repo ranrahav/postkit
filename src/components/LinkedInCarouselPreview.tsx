@@ -2,6 +2,19 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import SlidePreview from './SlidePreview';
 
+// Function to detect if text is primarily Hebrew (RTL) or English (LTR)
+const detectTextDirection = (text: string): "ltr" | "rtl" => {
+  if (!text || text.trim() === '') return "ltr";
+  
+  // Count Hebrew characters (Unicode range for Hebrew)
+  const hebrewChars = text.match(/[\u0590-\u05FF]/g) || [];
+  const totalChars = text.replace(/\s/g, '').length; // Remove spaces from count
+  
+  // If more than 30% of non-space characters are Hebrew, use RTL
+  const hebrewRatio = totalChars > 0 ? hebrewChars.length / totalChars : 0;
+  return hebrewRatio > 0.3 ? "rtl" : "ltr";
+};
+
 interface LinkedInCarouselPreviewProps {
   slides: Array<{
     title: string;
@@ -83,6 +96,7 @@ const LinkedInCarouselPreview = ({
             onEditEnd={onEditEnd}
             onUpdateSlide={(updates) => onUpdateSlide(currentSlideIndex, updates)}
             showSlideNumber={false}
+            textDirection={detectTextDirection(slides[currentSlideIndex].title + " " + slides[currentSlideIndex].body)}
           />
         </div>
       </div>
