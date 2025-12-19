@@ -57,8 +57,8 @@ const Create = () => {
   const handleGenerate = async () => {
     if (!text.trim()) {
       toast({
-        title: "שגיאה",
-        description: "נא להזין טקסט ליצירת קרוסלה",
+        title: "Error",
+        description: "Please enter text to create a carousel",
         variant: "destructive",
       });
       return;
@@ -66,8 +66,8 @@ const Create = () => {
 
     if (profile && profile.carousel_count >= 10) {
       toast({
-        title: "הגעת למכסה החינמית",
-        description: "הגעת כמעט למכסה החינמית. בהמשך נוסיף תוכנית Pro.",
+        title: "Free limit reached",
+        description: "You've reached the free limit. We'll add a Pro plan soon.",
         variant: "destructive",
       });
       return;
@@ -92,7 +92,7 @@ const Create = () => {
           slides: data.slides,
           chosen_template: "dark",
           cover_style: coverStyle,
-          carousel_name: data.slides[0]?.title || "קרוסלה ללא שם",
+          carousel_name: data.slides[0]?.title || "Untitled carousel",
           background_color: "#000000",
           text_color: "#FFFFFF",
           accent_color: "#FFFFFF",
@@ -109,16 +109,16 @@ const Create = () => {
         .eq("id", user.id);
 
       toast({
-        title: "הקרוסלה נוצרה בהצלחה!",
-        description: "מעביר אותך לעריכה...",
+        title: "Carousel created successfully!",
+        description: "Redirecting you to the editor...",
       });
 
       navigate(`/edit/${carousel.id}`);
     } catch (error: any) {
       console.error("Error generating carousel:", error);
       toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה ביצירת הקרוסלה, נסה שוב",
+        title: "Error",
+        description: "Something went wrong while creating the carousel. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -129,7 +129,7 @@ const Create = () => {
   const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div dir="ltr" className="min-h-screen bg-gradient-to-b from-background to-muted">
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent">
@@ -137,10 +137,10 @@ const Create = () => {
           </h1>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => navigate("/my-carousels")}>
-              הקרוסלות שלי
+              My carousels
             </Button>
             <Button variant="ghost" onClick={() => navigate("/")}>
-              דף הבית
+              Home
             </Button>
           </div>
         </div>
@@ -150,49 +150,49 @@ const Create = () => {
         <div className="max-w-3xl mx-auto">
           <Card className="p-8 space-y-6">
             <div className="space-y-2">
-              <h2 className="text-3xl font-bold">יצירת קרוסלה חדשה</h2>
+              <h2 className="text-3xl font-bold">Create a new carousel</h2>
               <p className="text-muted-foreground">
-                הדבק את הטקסט שלך ותן לנו להפוך אותו לקרוסלה מקצועית
+                Paste your text and we'll turn it into a professional carousel
               </p>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">סגנון תוכן</label>
+                <label className="text-sm font-medium">Content style</label>
                 <select
                   value={style}
                   onChange={(e) => setStyle(e.target.value)}
                   className="w-full px-3 py-2 border border-input rounded-md bg-background"
                   disabled={loading}
                 >
-                  <option value="Professional">מקצועי</option>
-                  <option value="Storytelling">סיפורי</option>
-                  <option value="Educational">חינוכי</option>
-                  <option value="List / Tips">רשימה / טיפים</option>
+                  <option value="Professional">Professional</option>
+                  <option value="Storytelling">Storytelling</option>
+                  <option value="Educational">Educational</option>
+                  <option value="List / Tips">List / Tips</option>
                 </select>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">סגנון עטיפה</label>
+                <label className="text-sm font-medium">Cover style</label>
                 <select
                   value={coverStyle}
                   onChange={(e) => setCoverStyle(e.target.value as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame")}
                   className="w-full px-3 py-2 border border-input rounded-md bg-background"
                   disabled={loading}
                 >
-                  <option value="minimalist">מינימליסטי</option>
-                  <option value="big_number">מספר בולט</option>
-                  <option value="accent_block">אלמנט דקורטיבי</option>
-                  <option value="gradient_overlay">גרדיאנט</option>
-                  <option value="geometric">גיאומטרי</option>
-                  <option value="bold_frame">מסגרת בולטת</option>
+                  <option value="minimalist">Minimalist</option>
+                  <option value="big_number">Big number</option>
+                  <option value="accent_block">Accent block</option>
+                  <option value="gradient_overlay">Gradient</option>
+                  <option value="geometric">Geometric</option>
+                  <option value="bold_frame">Bold frame</option>
                 </select>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">טקסט התוכן</label>
+                <label className="text-sm font-medium">Content text</label>
                 <Textarea
-                  placeholder="הדבק כאן פוסט, מאמר או רעיון, בעברית או באנגלית..."
+                  placeholder="Paste a post, article, or idea here (Hebrew or English)..."
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   className="min-h-[400px] text-base resize-none"
@@ -202,11 +202,11 @@ const Create = () => {
 
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  {wordCount} מילים
+                  {wordCount} words
                 </span>
                 {profile && (
                   <span className="text-sm text-muted-foreground">
-                    {profile.carousel_count}/10 קרוסלות
+                    {profile.carousel_count}/10 carousels
                   </span>
                 )}
               </div>
@@ -220,10 +220,10 @@ const Create = () => {
                 {loading ? (
                   <>
                     <Loader2 className="ml-2 h-5 w-5 animate-spin" />
-                    יוצר קרוסלה...
+                    Creating carousel...
                   </>
                 ) : (
-                  "צור מבנה שקופיות"
+                  "Create slide structure"
                 )}
               </Button>
             </div>

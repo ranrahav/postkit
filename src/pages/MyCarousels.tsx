@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Edit, Download, Trash2, Plus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { he } from "date-fns/locale";
 
 const MyCarousels = () => {
   const [carousels, setCarousels] = useState<any[]>([]);
@@ -14,6 +13,15 @@ const MyCarousels = () => {
   const [profile, setProfile] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const detectTextDirection = (text: string): "ltr" | "rtl" => {
+    if (!text || text.trim() === "") return "ltr";
+
+    const hebrewChars = text.match(/[\u0590-\u05FF]/g) || [];
+    const totalChars = text.replace(/\s/g, "").length;
+    const hebrewRatio = totalChars > 0 ? hebrewChars.length / totalChars : 0;
+    return hebrewRatio > 0.3 ? "rtl" : "ltr";
+  };
 
   useEffect(() => {
     fetchData();
@@ -46,8 +54,8 @@ const MyCarousels = () => {
     } catch (error) {
       console.error("Error fetching carousels:", error);
       toast({
-        title: "שגיאה",
-        description: "לא ניתן לטעון את הקרוסלות",
+        title: "Error",
+        description: "Couldn't load carousels",
         variant: "destructive",
       });
     } finally {
@@ -56,7 +64,7 @@ const MyCarousels = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("האם אתה בטוח שברצונך למחוק קרוסלה זו?")) {
+    if (!confirm("Are you sure you want to delete this carousel?")) {
       return;
     }
 
@@ -78,14 +86,14 @@ const MyCarousels = () => {
       }
 
       toast({
-        title: "נמחק בהצלחה",
-        description: "הקרוסלה נמחקה",
+        title: "Deleted",
+        description: "Carousel deleted",
       });
     } catch (error) {
       console.error("Error deleting carousel:", error);
       toast({
-        title: "שגיאה",
-        description: "לא ניתן למחוק את הקרוסלה",
+        title: "Error",
+        description: "Couldn't delete the carousel",
         variant: "destructive",
       });
     }
@@ -94,8 +102,8 @@ const MyCarousels = () => {
   const handleExport = async (carousel: any) => {
     try {
       toast({
-        title: "מייצא קרוסלה...",
-        description: "זה עשוי לקחת כמה שניות",
+        title: "Exporting carousel...",
+        description: "This may take a few seconds",
       });
 
       // Dynamic imports
@@ -152,6 +160,7 @@ const MyCarousels = () => {
               slideNumber: i + 1,
               totalSlides: slides.length,
               showSlideNumber: false,
+              textDirection: detectTextDirection(`${slides[i]?.title || ""} ${slides[i]?.body || ""}`),
             })
           );
 
@@ -213,14 +222,14 @@ const MyCarousels = () => {
       URL.revokeObjectURL(url);
       
       toast({
-        title: "הקרוסלה יוצאה בהצלחה!",
-        description: "הקובץ הורד למחשב שלך",
+        title: "Exported successfully!",
+        description: "The file was downloaded to your computer",
       });
     } catch (error) {
       console.error("Error exporting carousel:", error);
       toast({
-        title: "תקלה ביצוא",
-        description: "נסו שוב או פנו לתמיכה",
+        title: "Export failed",
+        description: "Please try again or contact support",
         variant: "destructive",
       });
     }
@@ -235,19 +244,19 @@ const MyCarousels = () => {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div dir="ltr" className="min-h-screen bg-gradient-to-b from-background to-muted">
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent">
             SlideMint
           </h1>
           <div className="flex gap-2">
-            <Button onClick={() => navigate("/create")}>
+            <Button onClick={() => navigate("/create")}> 
               <Plus className="ml-2 h-4 w-4" />
-              קרוסלה חדשה
+              New carousel
             </Button>
-            <Button variant="ghost" onClick={() => navigate("/")}>
-              דף הבית
+            <Button variant="ghost" onClick={() => navigate("/")}> 
+              Home
             </Button>
           </div>
         </div>
@@ -257,10 +266,10 @@ const MyCarousels = () => {
         <div className="max-w-5xl mx-auto space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-3xl font-bold">הקרוסלות שלי</h2>
+              <h2 className="text-3xl font-bold">My carousels</h2>
               <p className="text-muted-foreground mt-1">
-                {carousels.length} קרוסלות
-                {profile && ` • ${profile.carousel_count}/10 שנוצרו`}
+                {carousels.length} carousels
+                {profile && ` • ${profile.carousel_count}/10 created`}
               </p>
             </div>
           </div>
@@ -268,7 +277,7 @@ const MyCarousels = () => {
           {profile && profile.carousel_count >= 8 && (
             <Card className="p-4 bg-accent/5 border-accent">
               <p className="text-sm">
-                הגעת כמעט למכסה החינמית ({profile.carousel_count}/10). בהמשך נוסיף תוכנית Pro.
+                You're close to the free limit ({profile.carousel_count}/10). We'll add a Pro plan soon.
               </p>
             </Card>
           )}
@@ -276,13 +285,11 @@ const MyCarousels = () => {
           {carousels.length === 0 ? (
             <Card className="p-12 text-center">
               <div className="space-y-4">
-                <h3 className="text-xl font-semibold">עדיין לא יצרת קרוסלות</h3>
-                <p className="text-muted-foreground">
-                  התחל ליצור את הקרוסלה הראשונה שלך
-                </p>
-                <Button onClick={() => navigate("/create")}>
+                <h3 className="text-xl font-semibold">You haven't created any carousels yet</h3>
+                <p className="text-muted-foreground">Start by creating your first carousel</p>
+                <Button onClick={() => navigate("/create")}> 
                   <Plus className="ml-2 h-4 w-4" />
-                  צור קרוסלה חדשה
+                  Create a new carousel
                 </Button>
               </div>
             </Card>
@@ -295,38 +302,25 @@ const MyCarousels = () => {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-semibold truncate mb-1">
-                          {firstSlide?.title || "ללא כותרת"}
+                          {firstSlide?.title || "Untitled"}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {carousel.slides.length} שקופיות •{" "}
-                          {carousel.chosen_template === "dark" ? "תבנית כהה" : "תבנית בהירה"} •{" "}
-                          נוצר{" "}
+                          {carousel.slides.length} slides •{" "}
+                          {carousel.chosen_template === "dark" ? "Dark template" : "Light template"} •{" "}
+                          Created{" "}
                           {formatDistanceToNow(new Date(carousel.created_at), {
                             addSuffix: true,
-                            locale: he,
                           })}
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => navigate(`/edit/${carousel.id}`)}
-                        >
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/edit/${carousel.id}`)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleExport(carousel)}
-                        >
+                        <Button size="sm" variant="outline" onClick={() => handleExport(carousel)}>
                           <Download className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDelete(carousel.id)}
-                        >
+                        <Button size="sm" variant="outline" onClick={() => handleDelete(carousel.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

@@ -44,8 +44,8 @@ const Auth = () => {
     
     if (!email || !password) {
       toast({
-        title: "שגיאה",
-        description: "נא למלא את כל השדות",
+        title: "Error",
+        description: "Please fill in all fields",
         variant: "destructive",
       });
       return;
@@ -53,8 +53,8 @@ const Auth = () => {
 
     if (password.length < 6) {
       toast({
-        title: "שגיאה",
-        description: "הסיסמה חייבת להכיל לפחות 6 תווים",
+        title: "Error",
+        description: "Password must be at least 6 characters",
         variant: "destructive",
       });
       return;
@@ -72,8 +72,8 @@ const Auth = () => {
         if (error) throw error;
 
         toast({
-          title: "התחברת בהצלחה!",
-          description: "מעביר אותך ללוח הבקרה...",
+          title: "Signed in successfully!",
+          description: "Redirecting you to the dashboard...",
         });
         
         navigate("/dashboard");
@@ -89,20 +89,20 @@ const Auth = () => {
         if (error) throw error;
 
         toast({
-          title: "נרשמת בהצלחה!",
-          description: "מעביר אותך ללוח הבקרה...",
+          title: "Signed up successfully!",
+          description: "Redirecting you to the dashboard...",
         });
         
         navigate("/dashboard");
       }
     } catch (error: any) {
       toast({
-        title: "שגיאה",
+        title: "Error",
         description: error.message === "Invalid login credentials" 
-          ? "פרטי התחברות שגויים" 
+          ? "Invalid email or password" 
           : error.message === "User already registered"
-          ? "משתמש זה כבר רשום במערכת"
-          : "אירעה שגיאה, נסה שוב",
+          ? "This user is already registered"
+          : "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -122,13 +122,13 @@ const Auth = () => {
       if (error) throw error;
 
       toast({
-        title: "נשלח!",
-        description: "קישור לאיפוס סיסמה נשלח למייל שלך",
+        title: "Sent!",
+        description: "A password reset link was sent to your email",
       });
       setForgotPassword(false);
     } catch (error: any) {
       toast({
-        title: "שגיאה",
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
@@ -151,8 +151,8 @@ const Auth = () => {
       if (error) throw error;
     } catch (error: any) {
       toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה בהתחברות עם Google",
+        title: "Error",
+        description: "Something went wrong signing in with Google",
         variant: "destructive",
       });
       setLoading(false);
@@ -346,7 +346,7 @@ const Auth = () => {
               disabled={loading}
               className="text-xs"
             >
-              נקה התחברות אוטומטית
+              Clear auto sign-in
             </Button>
           </div> */}
         </div>

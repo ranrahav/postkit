@@ -8,9 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, Plus, Search, Download, Edit, Copy, X, ChevronLeft, ChevronRight, Palette } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { he } from "date-fns/locale";
 import { debounce } from "lodash";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import SlidePreview from "@/components/SlidePreview";
 import ColorPicker from "@/components/ui/color-picker";
 
@@ -30,8 +30,13 @@ interface Carousel {
   text_color: string | null;
   accent_color: string | null;
   aspect_ratio: "1:1" | "4:5" | string;
+  content_type?: "topic_idea" | "full_post" | null;
+  post_content?: string | null;
   created_at: string;
   updated_at: string;
+  // Additional fields from database
+  user_id?: string;
+  original_text?: string;
 }
 
 // Welcome carousel content for new users
@@ -47,7 +52,7 @@ const welcomeCarousel: Carousel = {
     {
       index: 1,
       title: 'Create Your First Carousel',
-      body: 'Click "New Carousel" in the right panel to start. Paste your content and we\'ll structure it into beautiful slides.'
+      body: 'Click "New Carousel" in the right panel to start. Choose your content type and we\'ll structure it into beautiful slides.'
     },
     {
       index: 2,
@@ -61,11 +66,16 @@ const welcomeCarousel: Carousel = {
     },
     {
       index: 4,
+      title: 'Edit Post Content',
+      body: 'Use the middle panel to view and edit your original post content. Changes are automatically saved!'
+    },
+    {
+      index: 5,
       title: 'Export & Share',
       body: 'Ready to share? Export your carousel as PNG images and post directly to LinkedIn or other platforms.'
     },
     {
-      index: 5,
+      index: 6,
       title: 'You\'re Ready!',
       body: 'Start creating amazing visual content. Your audience will love the professional carousels you can make with Post24!'
     }
@@ -76,6 +86,8 @@ const welcomeCarousel: Carousel = {
   text_color: '#FFFFFF',
   accent_color: '#3B82F6',
   aspect_ratio: '4:5',
+  content_type: 'full_post',
+  post_content: 'Welcome to Post24 - Your visual content creation platform for stunning LinkedIn carousels. Create professional carousels with our easy-to-use interface, customize designs, and export high-quality images ready for social media.',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString()
 };
@@ -111,8 +123,10 @@ const Dashboard = () => {
   
   // Create modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [newCarouselText, setNewCarouselText] = useState("");
   const [newCarouselStyle, setNewCarouselStyle] = useState("Professional");
+  const [newCarouselContentPurpose, setNewCarouselContentPurpose] = useState("thought_leadership");
+  const [newCarouselContentType, setNewCarouselContentType] = useState<"topic_idea" | "full_post">("topic_idea");
+  const [newCarouselText, setNewCarouselText] = useState("");
   const [newCarouselCoverStyle, setNewCarouselCoverStyle] = useState<"minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame">("minimalist");
   const [creatingCarousel, setCreatingCarousel] = useState(false);
   
@@ -304,11 +318,55 @@ const Dashboard = () => {
 
       if (error) throw error;
       
-      // Parse slides for each carousel
-      const parsedCarousels = data.map(carousel => ({
-        ...carousel,
-        slides: parseSlides(carousel.slides),
-      }));
+      // Parse slides for each carousel and add default values for new fields
+      const parsedCarousels = data.map((carousel: any) => {
+        // Try to get post content and type from localStorage first (for newly created carousels)
+        const storedPostContent = getStoredPostContent(carousel.id);
+        const storedContentType = getStoredContentType(carousel.id);
+        
+        console.log(`🔍 Loading carousel ${carousel.id}:`, {
+          hasStoredPostContent: !!storedPostContent,
+          hasStoredContentType: !!storedContentType,
+          hasDbPostContent: !!carousel.post_content,
+          originalTextLength: carousel.original_text?.length || 0,
+          storedContentType: storedContentType,
+          dbContentType: carousel.content_type
+        });
+        
+        // For existing carousels that don't have post_content in DB, we need to determine what to show
+        let postContent: string;
+        let contentType: "topic_idea" | "full_post";
+        
+        if (storedPostContent) {
+          // Use stored content from localStorage (newly created carousels)
+          postContent = storedPostContent;
+          contentType = storedContentType || "topic_idea";
+          console.log(`✅ Using localStorage for carousel ${carousel.id}: ${postContent.substring(0, 50)}...`);
+        } else if (carousel.post_content) {
+          // New carousels with post_content field in DB
+          postContent = carousel.post_content;
+          contentType = carousel.content_type || "topic_idea";
+          console.log(`✅ Using DB post_content for carousel ${carousel.id}: ${postContent.substring(0, 50)}...`);
+        } else {
+          // Existing carousels - use original_text as post content and default to full_post
+          postContent = carousel.original_text || "";
+          contentType = "full_post"; // Default existing carousels to full_post type
+          console.log(`⚠️ Using original_text for carousel ${carousel.id}: ${postContent.substring(0, 50)}...`);
+        }
+        
+        console.log(`📝 Final post content for carousel ${carousel.id}:`, {
+          contentType,
+          postContentLength: postContent.length,
+          preview: postContent.substring(0, 100) + (postContent.length > 100 ? '...' : '')
+        });
+        
+        return {
+          ...carousel,
+          slides: parseSlides(carousel.slides),
+          content_type: contentType,
+          post_content: postContent,
+        };
+      });
       
       // Check if user is new (no carousels) and add welcome carousel
       const isUserNew = parsedCarousels.length === 0;
@@ -339,8 +397,8 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Error fetching carousels:", error);
       toast({
-        title: "שגיאה",
-        description: "לא ניתן לטעון את הקרוסלות",
+        title: "Error",
+        description: "Couldn't load carousels",
         variant: "destructive",
       });
     } finally {
@@ -356,6 +414,21 @@ const Dashboard = () => {
     }
     
     console.log("🎯 selectCarousel called with:", carousel.id);
+    
+    // Check if we have fresh post content in localStorage for this carousel
+    const storedPostContent = getStoredPostContent(carousel.id);
+    const storedContentType = getStoredContentType(carousel.id);
+    
+    // If we have stored data, use it to update the carousel object
+    if (storedPostContent) {
+      carousel.post_content = storedPostContent;
+      carousel.content_type = storedContentType || carousel.content_type;
+      console.log("🔄 Updated carousel with localStorage data:", {
+        postContentLength: storedPostContent.length,
+        contentType: storedContentType
+      });
+    }
+    
     console.log("📝 Loading carousel design:", {
       chosen_template: carousel.chosen_template,
       cover_style: carousel.cover_style,
@@ -363,6 +436,9 @@ const Dashboard = () => {
       text_color: carousel.text_color,
       aspect_ratio: carousel.aspect_ratio,
       accent_color: carousel.accent_color,
+      content_type: carousel.content_type,
+      post_content_length: carousel.post_content?.length || 0,
+      post_content_preview: carousel.post_content?.substring(0, 100) + (carousel.post_content?.length > 100 ? '...' : ''),
     });
     
     setSelectedCarousel(carousel);
@@ -376,6 +452,8 @@ const Dashboard = () => {
     setTextColor(carousel.text_color || "#FFFFFF");
     setAccentColor(carousel.accent_color || "#FFFFFF");
     setAspectRatio((carousel.aspect_ratio as "1:1" | "4:5") || "4:5");
+    
+    console.log("✅ Carousel selected successfully, post content should now be visible in the panel");
     
     // Auto-scroll to the first slide after component renders
     setTimeout(() => {
@@ -395,35 +473,148 @@ const Dashboard = () => {
     if (!slidesContainerRef.current || !selectedCarousel) return;
     
     const container = slidesContainerRef.current;
-    const slideElements = container.children;
-    
-    // Since slides are reversed in DOM, we need to find the actual DOM element
-    // The first slide (index 0) is the last element in the DOM
-    const slides = parseSlides(selectedCarousel.slides);
-    const reverseIndex = slides.length - 1 - index;
-    
-    if (slideElements[reverseIndex]) {
-      const slide = slideElements[reverseIndex] as HTMLElement;
-      
-      // Use scrollIntoView for reliable positioning
-      slide.scrollIntoView({
-        behavior: 'smooth',
-        inline: 'center',
-        block: 'nearest'
-      });
-    }
+    const slide = container.querySelector(`[data-slide-index="${index}"]`) as HTMLElement | null;
+    if (!slide) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const slideRect = slide.getBoundingClientRect();
+    const delta = (slideRect.left - containerRect.left) - (containerRect.width - slideRect.width) / 2;
+
+    container.scrollBy({
+      left: delta,
+      behavior: 'smooth',
+    });
   };
+
+  useEffect(() => {
+    if (!selectedCarousel) return;
+    const id = requestAnimationFrame(() => scrollToSlide(selectedSlideIndex));
+    return () => cancelAnimationFrame(id);
+  }, [selectedCarousel?.id, selectedSlideIndex]);
 
   const detectLanguage = (text: string): string => {
     const hebrewChars = text.match(/[\u0590-\u05FF]/g);
     return hebrewChars && hebrewChars.length > text.length * 0.3 ? 'he' : 'en';
   };
 
-  const handleCreateCarousel = async () => {
+  // Client-side storage for post content (temporary until database schema is updated)
+const getStoredPostContent = (carouselId: string): string | null => {
+  try {
+    const stored = localStorage.getItem(`post_content_${carouselId}`);
+    console.log(`📖 Reading post_content for ${carouselId}:`, stored ? `Found (${stored.length} chars)` : 'Not found');
+    return stored;
+  } catch (error) {
+    console.error('Error reading from localStorage:', error);
+    return null;
+  }
+};
+
+const setStoredPostContent = (carouselId: string, content: string): void => {
+  try {
+    localStorage.setItem(`post_content_${carouselId}`, content);
+    console.log(`💾 Saving post_content for ${carouselId}:`, `Saved (${content.length} chars)`);
+  } catch (error) {
+    console.error('Error writing to localStorage:', error);
+  }
+};
+
+const getStoredContentType = (carouselId: string): "topic_idea" | "full_post" | null => {
+  try {
+    const stored = localStorage.getItem(`content_type_${carouselId}`);
+    console.log(`📖 Reading content_type for ${carouselId}:`, stored || 'Not found');
+    return stored as "topic_idea" | "full_post" | null;
+  } catch (error) {
+    console.error('Error reading from localStorage:', error);
+    return null;
+  }
+};
+
+const setStoredContentType = (carouselId: string, contentType: "topic_idea" | "full_post"): void => {
+  try {
+    localStorage.setItem(`content_type_${carouselId}`, contentType);
+    console.log(`💾 Saving content_type for ${carouselId}:`, contentType);
+  } catch (error) {
+    console.error('Error writing to localStorage:', error);
+  }
+};
+
+// Temporary frontend function to generate post content from topic/idea
+const generatePostFromTopicFrontend = (topic: string, contentPurpose: string): string => {
+  let sentences: string[] = [];
+  
+  switch (contentPurpose) {
+    case 'awareness':
+      // 25-75 words (short, concise awareness post)
+      sentences = [
+        `Discover the latest insights about ${topic}. This emerging trend is transforming how we work and live in today's digital landscape.`,
+        `Key benefits include improved efficiency, enhanced collaboration, and sustainable growth opportunities.`,
+        `Stay ahead of the curve by understanding these developments now. What's your take on ${topic}?`
+      ];
+      break;
+      
+    case 'thought_leadership':
+      // 100-300 words (comprehensive thought leadership post)
+      sentences = [
+        `I've been thinking a lot about ${topic} lately, and I wanted to share some insights with my network.`,
+        `The importance of ${topic} cannot be overstated in today's rapidly evolving landscape. As we navigate through unprecedented changes, understanding this concept becomes crucial for sustainable growth and innovation.`,
+        `Here are some key points to consider:\n\n• First, ${topic} impacts our daily lives in ways we might not immediately recognize. From decision-making processes to long-term strategic planning, its influence is pervasive.\n• Second, understanding ${topic} better can help us make more informed decisions. The data shows that organizations embracing these principles see 40% better outcomes.\n• Finally, the future of ${topic} holds exciting possibilities that we should all be aware of. Emerging technologies and methodologies are opening doors we never thought possible.`,
+        `The journey of mastering ${topic} is ongoing, and each step brings new opportunities for growth and learning. I've seen firsthand how teams transform when they embrace these principles.`,
+        `What are your thoughts on ${topic}? I'd love to hear your perspectives and experiences in the comments below. Let's start a meaningful conversation and learn from each other's insights.`
+      ];
+      break;
+      
+    case 'opinion':
+      // <20 words (very short opinion/conversation starter)
+      sentences = [
+        `${topic} is overrated. Here's why we need to rethink everything.`
+      ];
+      break;
+      
+    default:
+      // Default to thought leadership
+      sentences = [
+        `I've been thinking a lot about ${topic} lately, and I wanted to share some insights with my network.`,
+        `The importance of ${topic} cannot be overstated in today's rapidly evolving landscape.`,
+        `Here are some key points to consider:\n\n• First, ${topic} impacts our daily lives in ways we might not immediately recognize.\n• Second, understanding ${topic} better can help us make more informed decisions.\n• Finally, the future of ${topic} holds exciting possibilities that we should all be aware of.`,
+        `What are your thoughts on ${topic}? I'd love to hear your perspectives and experiences in the comments below.`,
+        `Let's start a meaningful conversation about ${topic} and learn from each other's insights.`
+      ];
+  }
+  
+  return sentences.join('\n\n');
+};
+
+// Temporary frontend function to create essence slides from full post
+const createEssenceSlidesFromPost = (postText: string, style: string): any[] => {
+  const sentences = postText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const slideCount = Math.min(8, Math.max(6, Math.ceil(sentences.length / 3)));
+  const sentencesPerSlide = Math.ceil(sentences.length / slideCount);
+  const slides = [];
+  
+  for (let i = 0; i < slideCount; i++) {
+    const startIdx = i * sentencesPerSlide;
+    const endIdx = Math.min(startIdx + sentencesPerSlide, sentences.length);
+    const slideContent = sentences.slice(startIdx, endIdx).join('. ').trim();
+    const words = slideContent.split(' ');
+    const titleWords = words.slice(0, Math.min(5, words.length));
+    const title = titleWords.join(' ') + (titleWords.length < words.length ? '...' : '');
+    const body = words.slice(titleWords.length).join(' ').trim() || slideContent;
+    
+    slides.push({
+      index: i + 1,
+      title: title || `Key Point ${i + 1}`,
+      body: body.length > 150 ? body.substring(0, 150) + '...' : body
+    });
+  }
+  
+  return slides;
+};
+
+const handleCreateCarousel = async () => {
     if (!newCarouselText.trim()) {
       toast({
-        title: "שגיאה",
-        description: "נא להזין טקסט ליצירת קרוסלה",
+        title: "Error",
+        description: "Please enter text to create a carousel",
         variant: "destructive",
       });
       return;
@@ -431,8 +622,8 @@ const Dashboard = () => {
 
     if (profile && profile.carousel_count >= 10) {
       toast({
-        title: "הגעת למכסה החינמית",
-        description: "הגעת כמעט למכסה החינמית. בהמשך נוסיף תוכנית Pro.",
+        title: "Free limit reached",
+        description: "You've reached the free limit. We'll add a Pro plan soon.",
         variant: "destructive",
       });
       return;
@@ -442,21 +633,46 @@ const Dashboard = () => {
     try {
       const language = detectLanguage(newCarouselText);
       
+      // Prepare the request based on content type
+      const requestBody = {
+        text: newCarouselText,
+        style: newCarouselStyle,
+        language,
+        content_type: newCarouselContentType,
+        content_purpose: newCarouselContentPurpose,
+      };
+      
       const { data, error } = await supabase.functions.invoke("generate-slides", {
-        body: { text: newCarouselText, style: newCarouselStyle, language },
+        body: requestBody,
       });
 
       if (error) throw error;
+
+      // Temporary frontend logic until backend is deployed
+      let finalPostContent: string;
+      let essenceSlides: any[];
+
+      if (newCarouselContentType === "topic_idea") {
+        // For topic/idea: generate full post and create essence slides
+        finalPostContent = data.generated_post || generatePostFromTopicFrontend(newCarouselText, newCarouselContentPurpose);
+        // Use the slides from backend if they exist, otherwise create essence from generated post
+        essenceSlides = data.slides && data.slides.length > 0 ? data.slides : createEssenceSlidesFromPost(finalPostContent, newCarouselStyle);
+      } else {
+        // For full post: use user's text and create essence slides
+        finalPostContent = newCarouselText;
+        // Use the slides from backend if they exist, otherwise create essence from user post
+        essenceSlides = data.slides && data.slides.length > 0 ? data.slides : createEssenceSlidesFromPost(finalPostContent, newCarouselStyle);
+      }
 
       const { data: carousel, error: insertError } = await supabase
         .from("carousels")
         .insert({
           user_id: user.id,
           original_text: newCarouselText,
-          slides: data.slides,
+          slides: essenceSlides,  // These are essence slides
           chosen_template: "dark",
           cover_style: newCarouselCoverStyle,
-          carousel_name: data.slides[0]?.title || "Untitled Carousel",
+          carousel_name: essenceSlides[0]?.title || "Untitled Carousel",
           background_color: "#000000",
           text_color: "#FFFFFF",
           accent_color: "#FFFFFF",
@@ -476,7 +692,7 @@ const Dashboard = () => {
       setProfile(prev => ({ ...prev, carousel_count: (prev?.carousel_count || 0) + 1 }));
 
       toast({
-        title: "הקרוסלה נוצרה בהצלחה!",
+        title: "Carousel created successfully!",
       });
 
       // Refresh carousels and select the new one
@@ -484,7 +700,7 @@ const Dashboard = () => {
       setCreateModalOpen(false);
       setNewCarouselText("");
       
-      // Find and select the new carousel
+      // Find and select the new carousel with post content
       const updatedCarousels = await supabase
         .from("carousels")
         .select("*")
@@ -494,13 +710,23 @@ const Dashboard = () => {
       if (updatedCarousels.data && updatedCarousels.data.length > 0) {
         await fetchCarousels(user.id);
         const firstCarousel = updatedCarousels.data[0];
-        selectCarousel(firstCarousel);
+        
+        // Save post content and type to localStorage for persistence
+        setStoredPostContent(firstCarousel.id, finalPostContent);
+        setStoredContentType(firstCarousel.id, newCarouselContentType);
+        
+        selectCarousel({
+          ...firstCarousel,
+          slides: parseSlides(firstCarousel.slides),
+          content_type: newCarouselContentType,
+          post_content: finalPostContent,  // Use the full post content
+        });
       }
     } catch (error: any) {
       console.error("Error generating carousel:", error);
       toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה ביצירת הקרוסלה, נסה שוב",
+        title: "Error",
+        description: "Something went wrong while creating the carousel. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -576,6 +802,21 @@ const Dashboard = () => {
     setSelectedCarousel(updatedCarousel);
     setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
     
+    // Save post content to localStorage for persistence
+    if (property === 'post_content') {
+      setStoredPostContent(selectedCarousel.id, value);
+    }
+    if (property === 'content_type') {
+      setStoredContentType(selectedCarousel.id, value);
+    }
+    
+    // Only save to database for fields that exist in the schema
+    // Skip content_type and post_content for now as they don't exist in the database yet
+    if (property === 'content_type' || property === 'post_content') {
+      console.log(`⏭️ Skipping database save for ${property} (field not in schema yet)`);
+      return;
+    }
+    
     // Save to database
     try {
       const { error } = await supabase
@@ -591,8 +832,8 @@ const Dashboard = () => {
     } catch (error) {
       console.error(`❌ Failed to save ${property}:`, error);
       toast({
-        title: "שגיאה",
-        description: `לא ניתן לשמור את ${property}`,
+        title: "Error",
+        description: `Couldn't save ${property}`,
         variant: "destructive",
       });
     }
@@ -646,8 +887,8 @@ const Dashboard = () => {
     } catch (error) {
       console.error("❌ Failed to save template and colors:", error);
       toast({
-        title: "שגיאה",
-        description: "לא ניתן לשמור את התבנית",
+        title: "Error",
+        description: "Couldn't save the template",
         variant: "destructive",
       });
     }
@@ -719,77 +960,85 @@ const Dashboard = () => {
           text_color: carousel.text_color,
           aspect_ratio: carousel.aspect_ratio,
           accent_color: carousel.accent_color,
+          updated_at: new Date().toISOString(),
         });
-        // Changes saved silently - no toast notification
-      } catch (error) {
-        toast({
-          title: "שגיאה",
-          description: "לא ניתן לשמור את השינויים",
-          variant: "destructive",
-        });
-      }
-    }, 1000),
-    [template, coverStyle, backgroundColor, textColor, aspectRatio, accentColor, toast]
-  );
+
+      // Changes saved silently - no toast notification
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Couldn't save changes",
+        variant: "destructive",
+      });
+    }
+  }, 1000),
+  [selectedCarousel, toast]
+);
 
   const handleAddNewSlide = () => {
     if (!selectedCarousel) return;
-    
+    if (selectedCarousel.id === "welcome-carousel") return;
+
     const slides = parseSlides(selectedCarousel.slides);
     const newSlide: Slide = {
       index: slides.length,
       title: "New Title",
-      body: "New content"
+      body: "New content",
     };
-    
+
     const updatedSlides = [...slides, newSlide];
     const updatedCarousel = { ...selectedCarousel, slides: updatedSlides };
-    
+
     setSelectedCarousel(updatedCarousel);
-    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
-    setSelectedSlideIndex(slides.length); // Select the new slide
-    
-    // Scroll to the new slide
+    setCarousels(carousels.map((c) => (c.id === selectedCarousel.id ? updatedCarousel : c)));
+    setSelectedSlideIndex(slides.length);
+
     setTimeout(() => {
       scrollToSlide(slides.length);
     }, 100);
-    
+
     debouncedSave(updatedCarousel);
-    
+
     toast({
-      title: "שקופית חדשה נוספה",
-      description: "השקופית נוספה בהצלחה"
+      title: "New slide added",
+      description: "The slide was added successfully",
     });
   };
 
   const handleDeleteSlide = (index: number) => {
     if (!selectedCarousel) return;
-    
+    if (selectedCarousel.id === "welcome-carousel") return;
+
     const slides = parseSlides(selectedCarousel.slides);
     if (slides.length <= 2) {
       toast({
-        title: "שגיאה",
-        description: "קרוסלה חייבת להכיל לפחות 2 שקופיות",
+        title: "Error",
+        description: "A carousel must have at least 2 slides",
         variant: "destructive",
       });
       return;
     }
 
     const newSlides = slides.filter((_, i) => i !== index);
-    const updatedCarousel = { ...selectedCarousel, slides: newSlides.map((slide, i) => ({ ...slide, index: i })) };
+    const updatedCarousel = {
+      ...selectedCarousel,
+      slides: newSlides.map((slide, i) => ({ ...slide, index: i })),
+    };
+
     setSelectedCarousel(updatedCarousel);
-    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
-    
+    setCarousels(carousels.map((c) => (c.id === selectedCarousel.id ? updatedCarousel : c)));
+
     if (selectedSlideIndex >= newSlides.length) {
       setSelectedSlideIndex(newSlides.length - 1);
     }
-    
+
     debouncedSave(updatedCarousel);
   };
 
   const handleDuplicateSlide = (index: number) => {
     if (!selectedCarousel) return;
-    
+    if (selectedCarousel.id === "welcome-carousel") return;
+
     const slides = parseSlides(selectedCarousel.slides);
     const slideToDuplicate = slides[index];
     const newSlides = [
@@ -797,9 +1046,14 @@ const Dashboard = () => {
       { ...slideToDuplicate, index: index + 1 },
       ...slides.slice(index + 1),
     ];
-    const updatedCarousel = { ...selectedCarousel, slides: newSlides.map((slide, i) => ({ ...slide, index: i })) };
+
+    const updatedCarousel = {
+      ...selectedCarousel,
+      slides: newSlides.map((slide, i) => ({ ...slide, index: i })),
+    };
+
     setSelectedCarousel(updatedCarousel);
-    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
+    setCarousels(carousels.map((c) => (c.id === selectedCarousel.id ? updatedCarousel : c)));
     debouncedSave(updatedCarousel);
   };
 
@@ -810,12 +1064,12 @@ const Dashboard = () => {
       const { toPng } = await import('html-to-image');
       const JSZip = (await import('jszip')).default;
       const { createRoot } = await import('react-dom/client');
-      
+
       const zip = new JSZip();
       const carouselName = carousel?.carousel_name || "carousel";
       const slides = parseSlides(carousel.slides);
       let failedSlides = 0;
-      
+
       // Use the carousel's own settings for export
       const carouselTemplate = (carousel.chosen_template as "dark" | "light") || "dark";
       const carouselCoverStyle = (carousel.cover_style as any) || "minimalist";
@@ -823,11 +1077,11 @@ const Dashboard = () => {
       const carouselTextColor = carousel.text_color || "#FFFFFF";
       const carouselAccentColor = carousel.accent_color || "#FFFFFF";
       const carouselAspectRatio = (carousel.aspect_ratio as "1:1" | "4:5") || "4:5";
-      
+
       // Base logical size for rendering (export will be upscaled via pixelRatio)
       const baseWidth = 540; // will become 1080 with pixelRatio: 2
       const baseHeight = carouselAspectRatio === "4:5" ? 675 : 540; // 4:5 -> 540x675, 1:1 -> 540x540
-      
+
       for (let i = 0; i < slides.length; i++) {
         let root: any = null;
         let hiddenContainer: HTMLDivElement | null = null;
@@ -842,9 +1096,9 @@ const Dashboard = () => {
           hiddenContainer.style.fontSize = '16px';
           hiddenContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
           document.body.appendChild(hiddenContainer);
-          
+
           root = createRoot(hiddenContainer);
-          
+
           // Render just the slide without the carousel wrapper
           const React = await import('react');
           root.render(
@@ -867,19 +1121,19 @@ const Dashboard = () => {
               textDirection: detectTextDirection(slides[i].title + " " + slides[i].body)
             })
           );
-          
+
           // Wait for render
           await new Promise(resolve => setTimeout(resolve, 200));
-          
+
           // Capture at higher pixel ratio so final PNG is 1080x1350 or 1080x1080
           const dataUrl = await toPng(hiddenContainer.firstChild as HTMLElement, {
             pixelRatio: 2,
           });
-          
+
           const response = await fetch(dataUrl);
           const blob = await response.blob();
           zip.file(`${carouselName}-slide-${i + 1}.png`, blob);
-          
+
           root.unmount();
           if (hiddenContainer.parentNode) {
             document.body.removeChild(hiddenContainer);
@@ -904,35 +1158,35 @@ const Dashboard = () => {
           }
         }
       }
-      
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+
       const url = URL.createObjectURL(zipBlob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `${carouselName}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       if (failedSlides > 0) {
         toast({
-          title: "חלק מהשקופיות לא יוצרו",
-          description: "נסו שוב.",
+          title: "Some slides couldn't be exported",
+          description: "Please try again.",
           variant: "destructive",
         });
       } else {
         toast({
-          title: "הקרוסלה יוצאה בהצלחה!",
-          description: "הקובץ הורד למחשב שלך",
+          title: "Exported successfully!",
+          description: "The file was downloaded to your computer",
         });
       }
     } catch (error) {
       console.error("Error exporting carousel:", error);
       toast({
-        title: "תקלה ביצוא",
-        description: "נסו שוב או פנו לתמיכה",
+        title: "Export failed",
+        description: "Please try again or contact support",
         variant: "destructive",
       });
     } finally {
@@ -1025,8 +1279,8 @@ const Dashboard = () => {
       }
       
       toast({
-        title: "השקופית יוצאה בהצלחה!",
-        description: "הקובץ הורד למחשב שלך",
+        title: "Slide exported successfully!",
+        description: "The file was downloaded to your computer",
       });
     } catch (error) {
       console.error("Error exporting slide:", error);
@@ -1046,8 +1300,8 @@ const Dashboard = () => {
         }
       }
       toast({
-        title: "תקלה ביצוא",
-        description: "נסו שוב או פנו לתמיכה",
+        title: "Export failed",
+        description: "Please try again or contact support",
         variant: "destructive",
       });
     }
@@ -1095,7 +1349,108 @@ const Dashboard = () => {
       </header>
 
       <div className="flex h-[calc(100vh-73px)]">
-        {/* Main Content Area */}
+        {/* Bottom Editing Panel */}
+        <div dir="ltr" className="w-[320px] flex-shrink-0 border-l bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 backdrop-blur-sm flex flex-col border-l-slate-200/50">
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex flex-col gap-4">
+              {/* Template Selection */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-2">Template</label>
+                <Select
+                  value={selectedCarousel ? selectedCarousel.chosen_template || "dark" : "dark"}
+                  onValueChange={handleTemplateChange}
+                  disabled={!selectedCarousel}
+                >
+                  <SelectTrigger dir="ltr" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end" dir="ltr">
+                    <SelectItem value="dark">Dark</SelectItem>
+                    <SelectItem value="light">Light</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Background Color */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-2">Background</label>
+                <ColorPicker
+                  color={selectedCarousel ? selectedCarousel.background_color || "#000000" : "#000000"}
+                  setColor={handleBackgroundColorChange}
+                  title="Background"
+                  disabled={!selectedCarousel}
+                  showLabel={false}
+                />
+              </div>
+
+              {/* Text Color */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-2">Text</label>
+                <ColorPicker
+                  color={selectedCarousel ? selectedCarousel.text_color || "#FFFFFF" : "#FFFFFF"}
+                  setColor={handleTextColorChange}
+                  title="Text"
+                  disabled={!selectedCarousel}
+                  showLabel={false}
+                />
+              </div>
+
+              {/* Design Style Selection */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-2">Style</label>
+                <Select
+                  value={selectedCarousel ? selectedCarousel.cover_style || "minimalist" : "minimalist"}
+                  onValueChange={handleCoverStyleChange}
+                  disabled={!selectedCarousel}
+                >
+                  <SelectTrigger dir="ltr" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end" dir="ltr">
+                    <SelectItem value="minimalist">Minimalist</SelectItem>
+                    <SelectItem value="big_number">Big Number</SelectItem>
+                    <SelectItem value="accent_block">Accent Block</SelectItem>
+                    <SelectItem value="gradient_overlay">Gradient</SelectItem>
+                    <SelectItem value="geometric">Geometric</SelectItem>
+                    <SelectItem value="bold_frame">Bold Frame</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Accent Color */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-2">Accent</label>
+                <ColorPicker
+                  color={selectedCarousel ? selectedCarousel.accent_color || "#FFFFFF" : "#FFFFFF"}
+                  setColor={handleAccentColorChange}
+                  title="Accent"
+                  disabled={!selectedCarousel}
+                  showLabel={false}
+                />
+              </div>
+
+              {/* Aspect Ratio */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-2">Aspect Ratio</label>
+                <Select
+                  value={selectedCarousel ? selectedCarousel.aspect_ratio || "4:5" : "4:5"}
+                  onValueChange={handleAspectRatioChange}
+                  disabled={!selectedCarousel}
+                >
+                  <SelectTrigger dir="ltr" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end" dir="ltr">
+                    <SelectItem value="1:1">1:1</SelectItem>
+                    <SelectItem value="4:5">4:5</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Area - Slide Previews */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Preview Area */}
           <div className="flex-1 p-6 overflow-auto">
@@ -1105,31 +1460,17 @@ const Dashboard = () => {
                 <div className="flex-1 relative">
                   <div
                     ref={slidesContainerRef}
-                    className="h-full flex items-center gap-4 overflow-x-auto overflow-y-hidden pb-4 scrollbar-hide"
+                    dir="ltr"
+                    className="h-full flex items-center gap-4 overflow-x-auto overflow-y-hidden pb-4 px-16 scroll-px-16 scrollbar-hide"
                     style={{ scrollBehavior: 'smooth', msOverflowStyle: 'none', scrollbarWidth: 'none' }}
                   >
-                    {/* Add New Slide Button */}
-                    {selectedCarousel?.id !== 'welcome-carousel' && (
-                      <div className="flex-shrink-0">
-                        <button
-                          onClick={handleAddNewSlide}
-                          className="w-[400px] h-[calc(100vh-300px)] max-h-[600px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 group"
-                        >
-                          <div className="text-center">
-                            <Plus className="w-12 h-12 mx-auto mb-2 text-slate-400 group-hover:text-slate-600 transition-colors" />
-                            <p className="text-slate-500 group-hover:text-slate-700 transition-colors">Add New Slide</p>
-                          </div>
-                        </button>
-                      </div>
-                    )}
-                    
-                    {parseSlides(selectedCarousel.slides).slice().reverse().map((slide, reverseIndex) => {
-                      const index = parseSlides(selectedCarousel.slides).length - 1 - reverseIndex;
+                    {parseSlides(selectedCarousel.slides).map((slide, index) => {
                       const visualSlideNumber = index + 1; // 1, 2, 3... based on actual position
                       const isActive = selectedSlideIndex === index;
                       return (
                       <div
                         key={index}
+                        data-slide-index={index}
                         className={`flex-shrink-0 relative transition-all duration-300 cursor-pointer ${
                           isActive 
                             ? "scale-120 opacity-100 z-10" 
@@ -1215,25 +1556,42 @@ const Dashboard = () => {
                       </div>
                     );
                     })}
+
+                    {/* Add New Slide Button */}
+                    {selectedCarousel?.id !== 'welcome-carousel' && (
+                      <div className="flex-shrink-0">
+                        <button
+                          onClick={handleAddNewSlide}
+                          className="w-[400px] h-[calc(100vh-300px)] max-h-[600px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 group"
+                        >
+                          <div className="text-center">
+                            <Plus className="w-12 h-12 mx-auto mb-2 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                            <p className="text-slate-500 group-hover:text-slate-700 transition-colors">Add New Slide</p>
+                          </div>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Navigation Arrows */}
                   {parseSlides(selectedCarousel.slides).length > 1 && (
                     <>
-                      <button
-                        onClick={() => navigateSlide(1)}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-background/90 hover:bg-background rounded-full p-2 shadow-lg border border-border transition-all duration-200 hover:scale-110"
-                        disabled={selectedSlideIndex === parseSlides(selectedCarousel.slides).length - 1}
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => navigateSlide(-1)}
-                        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-background/90 hover:bg-background rounded-full p-2 shadow-lg border border-border transition-all duration-200 hover:scale-110"
-                        disabled={selectedSlideIndex === 0}
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
+                      {selectedSlideIndex < parseSlides(selectedCarousel.slides).length - 1 && (
+                        <button
+                          onClick={() => navigateSlide(1)}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-background/90 hover:bg-background rounded-full p-2 shadow-lg border border-border transition-all duration-200 hover:scale-110 z-30"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                      )}
+                      {selectedSlideIndex > 0 && (
+                        <button
+                          onClick={() => navigateSlide(-1)}
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-background/90 hover:bg-background rounded-full p-2 shadow-lg border border-border transition-all duration-200 hover:scale-110 z-30"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -1253,117 +1611,66 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+        </div>
 
-          {/* Bottom Editing Panel */}
-          <div dir="ltr" className="border-t bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 backdrop-blur-sm p-6 border-t-slate-200/50">
-            <div className="max-w-6xl mx-auto">
-              <div className="flex items-end justify-center gap-6">
-                {/* Template Selection */}
-                <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">Template</label>
-                  <Select 
-                    value={selectedCarousel ? selectedCarousel.chosen_template || "dark" : "dark"} 
-                    onValueChange={handleTemplateChange}
-                    disabled={!selectedCarousel}
-                  >
-                    <SelectTrigger dir="ltr" className="w-auto min-w-[100px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent align="end" dir="ltr">
-                      <SelectItem value="dark">Dark</SelectItem>
-                      <SelectItem value="light">Light</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {/* Background Color */}
-                <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">Background</label>
-                  <ColorPicker 
-                    color={selectedCarousel ? selectedCarousel.background_color || "#000000" : "#000000"} 
-                    setColor={handleBackgroundColorChange} 
-                    title="Background" 
-                    disabled={!selectedCarousel}
-                    showLabel={false}
-                  />
-                </div>
-                
-                {/* Text Color */}
-                <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">Text</label>
-                  <ColorPicker 
-                    color={selectedCarousel ? selectedCarousel.text_color || "#FFFFFF" : "#FFFFFF"} 
-                    setColor={handleTextColorChange} 
-                    title="Text" 
-                    disabled={!selectedCarousel}
-                    showLabel={false}
-                  />
-                </div>
-                
-                {/* Separator */}
-                <div className="text-2xl font-bold text-slate-400 mb-2">|</div>
-                
-                {/* Design Style Selection */}
-                <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">Style</label>
-                  <Select 
-                    value={selectedCarousel ? selectedCarousel.cover_style || "minimalist" : "minimalist"} 
-                    onValueChange={handleCoverStyleChange}
-                    disabled={!selectedCarousel}
-                  >
-                    <SelectTrigger dir="ltr" className="w-auto min-w-[100px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent align="end" dir="ltr">
-                      <SelectItem value="minimalist">Minimalist</SelectItem>
-                      <SelectItem value="big_number">Big Number</SelectItem>
-                      <SelectItem value="accent_block">Accent Block</SelectItem>
-                      <SelectItem value="gradient_overlay">Gradient</SelectItem>
-                      <SelectItem value="geometric">Geometric</SelectItem>
-                      <SelectItem value="bold_frame">Bold Frame</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {/* Accent Color */}
-                <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">Accent</label>
-                  <ColorPicker 
-                    color={selectedCarousel ? selectedCarousel.accent_color || "#FFFFFF" : "#FFFFFF"} 
-                    setColor={handleAccentColorChange} 
-                    title="Accent" 
-                    disabled={!selectedCarousel}
-                    showLabel={false}
-                  />
-                </div>
-                
-                {/* Separator */}
-                <div className="text-2xl font-bold text-slate-400 mb-2">|</div>
-                
-                {/* Aspect Ratio */}
-                <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-2">Aspect Ratio</label>
-                  <Select 
-                    value={selectedCarousel ? selectedCarousel.aspect_ratio || "4:5" : "4:5"} 
-                    onValueChange={handleAspectRatioChange}
-                    disabled={!selectedCarousel}
-                  >
-                    <SelectTrigger dir="ltr" className="w-auto min-w-[100px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent align="end" dir="ltr">
-                      <SelectItem value="1:1">1:1</SelectItem>
-                      <SelectItem value="4:5">4:5</SelectItem>
-                    </SelectContent>
-                  </Select>
+        {/* Post Content Panel */}
+        <div className="w-[400px] flex-shrink-0 border-r bg-gradient-to-br from-slate-50 to-slate-100 backdrop-blur-sm flex flex-col border-r-slate-200/50">
+          {selectedCarousel ? (
+            <>
+              {/* Post Content Header */}
+              <div className="p-4 border-b bg-white/50 backdrop-blur-sm border-b-slate-200/30 text-left" dir="ltr">
+                <h3 className="font-semibold text-sm mb-1">
+                  {selectedCarousel.content_type === "topic_idea" ? "Topic/Idea" : "Full Post"}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {selectedCarousel.content_type === "topic_idea" 
+                    ? "This topic/idea was developed into the carousel slides" 
+                    : "Complete post content for reference"}
+                </p>
+              </div>
+
+              {/* Post Content Editor */}
+              <div className="flex-1 p-4">
+                <Textarea
+                  value={selectedCarousel.post_content || ""}
+                  onChange={(e) => {
+                    const updatedCarousel = { ...selectedCarousel, post_content: e.target.value };
+                    setSelectedCarousel(updatedCarousel);
+                    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
+                    
+                    // Save to database
+                    updateDesignProperty('post_content', e.target.value);
+                  }}
+                  placeholder={selectedCarousel.content_type === "topic_idea" 
+                    ? "Enter your topic or idea here..." 
+                    : "Enter your full post content here..."}
+                  className="h-full min-h-[400px] resize-none text-base text-left"
+                  style={{ textAlign: 'left', direction: 'ltr' }}
+                  dir="ltr"
+                  disabled={selectedCarousel?.id === 'welcome-carousel'}
+                />
+              </div>
+
+              {/* Post Content Footer */}
+              <div className="p-4 border-t bg-white/30 backdrop-blur-sm border-t-slate-200/30 text-left" dir="ltr">
+                <div className="text-xs text-muted-foreground">
+                  {(selectedCarousel.post_content || "").trim().split(/\s+/).filter(word => word.length > 0).length} words
                 </div>
               </div>
+            </>
+          ) : (
+            <div className="h-full flex items-center justify-center p-4">
+              <div className="text-center space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Select a carousel to view and edit its post content
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Right Panel - Carousel List */}
-        <div className="w-[320px] flex-shrink-0 border-r bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 backdrop-blur-sm flex flex-col border-r-slate-200/50">
+        <div className="w-[320px] flex-shrink-0 bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 backdrop-blur-sm flex flex-col border-l-slate-200/50">
           {/* Search and Add */}
           <div className="p-4 border-b space-y-3 bg-white/50 backdrop-blur-sm border-b-slate-200/30">
             <div className="relative">
@@ -1495,6 +1802,67 @@ const Dashboard = () => {
 
               <div className="space-y-4">
                 <div className="space-y-2">
+                  <label className="text-sm font-medium">Content Type</label>
+                  <RadioGroup
+                    value={newCarouselContentType}
+                    onValueChange={(value) => setNewCarouselContentType(value as "topic_idea" | "full_post")}
+                    disabled={creatingCarousel}
+                    className="flex flex-col space-y-2"
+                  >
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      <RadioGroupItem value="topic_idea" id="topic_idea" />
+                      <label htmlFor="topic_idea" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Topic or idea
+                      </label>
+                    </div>
+                    <p className="text-xs text-muted-foreground mr-6">
+                      1-2 sentences about a topic or idea that will be developed into a post. The key messages should be in the carousel slides.
+                    </p>
+                    <div className="flex items-center space-x-2 space-x-reverse mt-3">
+                      <RadioGroupItem value="full_post" id="full_post" />
+                      <label htmlFor="full_post" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Full post
+                      </label>
+                    </div>
+                    <p className="text-xs text-muted-foreground mr-6">
+                      Complete post content. No post development needed - key messages should go directly into carousel slides.
+                    </p>
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {newCarouselContentType === "topic_idea" ? "Topic or Idea" : "Full Post Content"}
+                  </label>
+                  <Textarea
+                    placeholder={newCarouselContentType === "topic_idea" 
+                      ? "Enter 1-2 sentences describing your topic or idea..." 
+                      : "Paste your complete post content here..."}
+                    value={newCarouselText}
+                    onChange={(e) => setNewCarouselText(e.target.value)}
+                    className="min-h-[200px] text-base resize-none"
+                    disabled={creatingCarousel}
+                  />
+                  <div className="text-sm text-muted-foreground">
+                    {newCarouselText.trim().split(/\s+/).filter(word => word.length > 0).length} words
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Content Purpose</label>
+                  <select
+                    value={newCarouselContentPurpose}
+                    onChange={(e) => setNewCarouselContentPurpose(e.target.value)}
+                    className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                    disabled={creatingCarousel}
+                  >
+                    <option value="awareness">Awareness → 25–75 words</option>
+                    <option value="thought_leadership">Thought leadership or storytelling → 100–300 words</option>
+                    <option value="opinion">Opinion or conversation starter → &lt;20 words</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Content Style</label>
                   <select
                     value={newCarouselStyle}
@@ -1524,20 +1892,6 @@ const Dashboard = () => {
                     <option value="geometric">Geometric</option>
                     <option value="bold_frame">Bold Frame</option>
                   </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Content Text</label>
-                  <Textarea
-                    placeholder="Paste a post, article, or idea here, in Hebrew or English..."
-                    value={newCarouselText}
-                    onChange={(e) => setNewCarouselText(e.target.value)}
-                    className="min-h-[200px] text-base resize-none"
-                    disabled={creatingCarousel}
-                  />
-                  <div className="text-sm text-muted-foreground">
-                    {newCarouselText.trim().split(/\s+/).filter(word => word.length > 0).length} words
-                  </div>
                 </div>
               </div>
 

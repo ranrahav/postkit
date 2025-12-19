@@ -26,22 +26,22 @@ const RegenerateModal = ({
 }: RegenerateModalProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl" dir="rtl">
+      <DialogContent className="max-w-4xl" dir="ltr">
         <DialogHeader>
-          <DialogTitle>השוואת גרסאות</DialogTitle>
+          <DialogTitle>Compare versions</DialogTitle>
         </DialogHeader>
         
         <div className="grid grid-cols-2 gap-4">
           {/* Old version */}
           <div className="space-y-3">
-            <h3 className="font-semibold text-sm text-muted-foreground">גרסה קודמת</h3>
+            <h3 className="font-semibold text-sm text-muted-foreground">Previous version</h3>
             <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">כותרת</label>
+                <label className="text-xs font-medium text-muted-foreground">Title</label>
                 <p className="text-sm mt-1">{oldSlide.title}</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">תוכן</label>
+                <label className="text-xs font-medium text-muted-foreground">Content</label>
                 <p className="text-sm mt-1 whitespace-pre-wrap">{oldSlide.body}</p>
               </div>
             </div>
@@ -49,14 +49,14 @@ const RegenerateModal = ({
 
           {/* New version */}
           <div className="space-y-3">
-            <h3 className="font-semibold text-sm text-primary">גרסה חדשה</h3>
+            <h3 className="font-semibold text-sm text-primary">New version</h3>
             <div className="space-y-2 p-4 border rounded-lg bg-primary/5 border-primary/20">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">כותרת</label>
+                <label className="text-xs font-medium text-muted-foreground">Title</label>
                 <p className="text-sm mt-1 font-medium">{newSlide.title}</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">תוכן</label>
+                <label className="text-xs font-medium text-muted-foreground">Content</label>
                 <p className="text-sm mt-1 whitespace-pre-wrap">{newSlide.body}</p>
               </div>
             </div>
@@ -65,10 +65,10 @@ const RegenerateModal = ({
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onReject}>
-            בטל וחזור לגרסה הקודמת
+            Cancel and keep previous
           </Button>
           <Button onClick={onAccept}>
-            שמור גרסה חדשה
+            Save new version
           </Button>
         </DialogFooter>
       </DialogContent>

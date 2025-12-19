@@ -48,10 +48,10 @@ const AuthCallback = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center">
+    <div dir="ltr" className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center">
       <div className="text-center space-y-4">
         <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-        <p className="text-muted-foreground">משלים את ההתחברות...</p>
+        <p className="text-muted-foreground">Completing sign-in...</p>
       </div>
     </div>
   );

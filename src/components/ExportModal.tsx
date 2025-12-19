@@ -22,9 +22,9 @@ const ExportModal = ({
 }: ExportModalProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir="rtl">
+      <DialogContent className="max-w-md" dir="ltr">
         <DialogHeader>
-          <DialogTitle>בחר אפשרות ייצוא</DialogTitle>
+          <DialogTitle>Choose an export option</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-3">
@@ -38,8 +38,8 @@ const ExportModal = ({
           >
             <Download className="h-5 w-5" />
             <div className="text-center">
-              <div className="font-semibold">ייצוא כל הקרוסלה</div>
-              <div className="text-xs text-muted-foreground">קובץ ZIP עם כל השקופיות</div>
+              <div className="font-semibold">Export entire carousel</div>
+              <div className="text-xs text-muted-foreground">ZIP file with all slides</div>
             </div>
           </Button>
 
@@ -53,8 +53,8 @@ const ExportModal = ({
           >
             <Download className="h-5 w-5" />
             <div className="text-center">
-              <div className="font-semibold">ייצוא שקופית נוכחית</div>
-              <div className="text-xs text-muted-foreground">PNG בלבד</div>
+              <div className="font-semibold">Export current slide</div>
+              <div className="text-xs text-muted-foreground">PNG only</div>
             </div>
           </Button>
         </div>

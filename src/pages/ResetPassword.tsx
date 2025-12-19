@@ -20,8 +20,8 @@ const ResetPassword = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         toast({
-          title: "שגיאה",
-          description: "קישור לא תקין או שפג תוקפו",
+          title: "Error",
+          description: "Invalid or expired link",
           variant: "destructive",
         });
         navigate("/auth");
@@ -34,8 +34,8 @@ const ResetPassword = () => {
 
     if (!newPassword || !confirmPassword) {
       toast({
-        title: "שגיאה",
-        description: "נא למלא את כל השדות",
+        title: "Error",
+        description: "Please fill in all fields",
         variant: "destructive",
       });
       return;
@@ -43,8 +43,8 @@ const ResetPassword = () => {
 
     if (newPassword.length < 6) {
       toast({
-        title: "שגיאה",
-        description: "הסיסמה חייבת להכיל לפחות 6 תווים",
+        title: "Error",
+        description: "Password must be at least 6 characters",
         variant: "destructive",
       });
       return;
@@ -52,8 +52,8 @@ const ResetPassword = () => {
 
     if (newPassword !== confirmPassword) {
       toast({
-        title: "שגיאה",
-        description: "הסיסמאות אינן תואמות",
+        title: "Error",
+        description: "Passwords do not match",
         variant: "destructive",
       });
       return;
@@ -69,8 +69,8 @@ const ResetPassword = () => {
       if (error) throw error;
 
       toast({
-        title: "הסיסמה אופסה בהצלחה",
-        description: "מעביר אותך לדף ההתחברות...",
+        title: "Password reset successfully",
+        description: "Redirecting you to sign in...",
       });
 
       setTimeout(() => {
@@ -78,8 +78,8 @@ const ResetPassword = () => {
       }, 1500);
     } catch (error: any) {
       toast({
-        title: "שגיאה",
-        description: error.message || "אירעה שגיאה, נסה שוב",
+        title: "Error",
+        description: error.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -88,18 +88,18 @@ const ResetPassword = () => {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+    <div dir="ltr" className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8 space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent">
             SlideMint
           </h1>
-          <p className="text-muted-foreground">איפוס סיסמה</p>
+          <p className="text-muted-foreground">Reset Password</p>
         </div>
 
         <form onSubmit={handleResetPassword} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="new-password">סיסמה חדשה</Label>
+            <Label htmlFor="new-password">New password</Label>
             <Input
               id="new-password"
               type="password"
@@ -113,7 +113,7 @@ const ResetPassword = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirm-password">אימות סיסמה</Label>
+            <Label htmlFor="confirm-password">Confirm password</Label>
             <Input
               id="confirm-password"
               type="password"
@@ -130,10 +130,10 @@ const ResetPassword = () => {
             {loading ? (
               <>
                 <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                מעבד...
+                Processing...
               </>
             ) : (
-              "אפס סיסמה"
+              "Reset password"
             )}
           </Button>
         </form>
@@ -144,7 +144,7 @@ const ResetPassword = () => {
             onClick={() => navigate("/auth")}
             disabled={loading}
           >
-            חזרה להתחברות
+            Back to sign in
           </Button>
         </div>
       </Card>

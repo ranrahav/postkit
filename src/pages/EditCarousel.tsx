@@ -109,8 +109,8 @@ const EditCarousel = () => {
     } catch (error) {
       console.error("Error fetching carousel:", error);
       toast({
-        title: "שגיאה",
-        description: "לא ניתן לטעון את הקרוסלה",
+        title: "Error",
+        description: "Couldn't load the carousel",
         variant: "destructive",
       });
       navigate("/my-carousels");
@@ -154,14 +154,14 @@ const EditCarousel = () => {
       try {
         await saveCarousel();
         toast({
-          title: "נשמר",
-          description: "השינויים נשמרו אוטומטית",
+          title: "Saved",
+          description: "Changes were saved automatically",
           duration: 2000,
         });
       } catch (error) {
         toast({
-          title: "שגיאה",
-          description: "לא ניתן לשמור את השינויים",
+          title: "Error",
+          description: "Couldn't save changes",
           variant: "destructive",
         });
       }
@@ -187,14 +187,14 @@ const EditCarousel = () => {
     try {
       await saveCarousel();
       toast({
-        title: "נשמר בהצלחה!",
-        description: "השינויים נשמרו",
+        title: "Saved successfully!",
+        description: "Your changes were saved",
       });
     } catch (error) {
       console.error("Error saving carousel:", error);
       toast({
-        title: "שגיאה",
-        description: "לא ניתן לשמור את השינויים",
+        title: "Error",
+        description: "Couldn't save changes",
         variant: "destructive",
       });
     }
@@ -251,6 +251,7 @@ const EditCarousel = () => {
               onEditEnd: () => {},
               onUpdateSlide: () => {},
               showSlideNumber: false,
+              textDirection: "ltr",
             })
           );
           
@@ -308,14 +309,14 @@ const EditCarousel = () => {
       
       if (failedSlides > 0) {
         toast({
-          title: "חלק מהשקופיות לא יוצרו",
-          description: "נסו שוב.",
+          title: "Some slides failed to export",
+          description: "Please try again.",
           variant: "destructive",
         });
       } else {
         toast({
-          title: "הקרוסלה יוצאה בהצלחה!",
-          description: "הקובץ הורד למחשב שלך",
+          title: "Exported successfully!",
+          description: "The file was downloaded to your computer",
         });
       }
     } catch (error) {
@@ -325,8 +326,8 @@ const EditCarousel = () => {
         console.error(`Stack: ${error.stack}`);
       }
       toast({
-        title: "תקלה ביצוא",
-        description: "נסו שוב או פנו לתמיכה",
+        title: "Export failed",
+        description: "Please try again or contact support",
         variant: "destructive",
       });
     } finally {
@@ -379,6 +380,7 @@ const EditCarousel = () => {
           onEditEnd: () => {},
           onUpdateSlide: () => {},
           showSlideNumber: false,
+          textDirection: "ltr",
         })
       );
       
@@ -408,8 +410,8 @@ const EditCarousel = () => {
       }
       
       toast({
-        title: "השקופית יוצאה בהצלחה!",
-        description: "הקובץ הורד למחשב שלך",
+        title: "Slide exported successfully!",
+        description: "The file was downloaded to your computer",
       });
     } catch (error) {
       console.error("Error exporting slide:", error);
@@ -433,8 +435,8 @@ const EditCarousel = () => {
         }
       }
       toast({
-        title: "תקלה ביצוא",
-        description: "נסו שוב או פנו לתמיכה",
+        title: "Export failed",
+        description: "Please try again or contact support",
         variant: "destructive",
       });
     } finally {
@@ -445,8 +447,8 @@ const EditCarousel = () => {
   const handleDeleteSlide = (index: number) => {
     if (slides.length <= 2) {
       toast({
-        title: "שגיאה",
-        description: "קרוסלה חייבת להכיל לפחות 2 שקופיות",
+        title: "Error",
+        description: "A carousel must have at least 2 slides",
         variant: "destructive",
       });
       return;
@@ -478,8 +480,8 @@ const EditCarousel = () => {
     setSlides([...slides, newSlide]);
     setSelectedSlideIndex(slides.length);
     toast({
-      title: "שקופית חדשה נוספה",
-      description: "ניתן לערוך את התוכן כעת",
+      title: "New slide added",
+      description: "You can edit the content now",
     });
   };
 
@@ -550,8 +552,8 @@ const EditCarousel = () => {
     } catch (error) {
       console.error("Error regenerating slide:", error);
       toast({
-        title: "שגיאה",
-        description: "לא ניתן ליצור מחדש את השקופית",
+        title: "Error",
+        description: "Couldn't regenerate the slide",
         variant: "destructive",
       });
     }
@@ -567,8 +569,8 @@ const EditCarousel = () => {
       setSlides(newSlides);
       setRegenerateModalOpen(false);
       toast({
-        title: "השקופית עודכנה בהצלחה",
-        description: "הטקסט נוצר מחדש באמצעות AI",
+        title: "Slide updated successfully",
+        description: "The text was regenerated using AI",
       });
     }
   };
@@ -576,8 +578,8 @@ const EditCarousel = () => {
   const handleRejectRegeneration = () => {
     setRegenerateModalOpen(false);
     toast({
-      title: "בוטל",
-      description: "השקופית נשארה ללא שינוי",
+      title: "Cancelled",
+      description: "The slide was kept unchanged",
     });
   };
 
@@ -592,7 +594,7 @@ const EditCarousel = () => {
   const selectedSlide = slides[selectedSlideIndex];
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div dir="ltr" className="min-h-screen bg-gradient-to-b from-background to-muted">
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <h1 className="text-2xl font-bold bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent">
@@ -600,7 +602,7 @@ const EditCarousel = () => {
           </h1>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate("/my-carousels")}>
-              חזרה
+              Back
             </Button>
           </div>
         </div>
@@ -611,14 +613,14 @@ const EditCarousel = () => {
           {/* Slide list - move to the opposite side of the preview */}
           <Card className="w-64 p-3 space-y-2 overflow-y-auto flex-shrink-0 order-2">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold">שקופיות ({slides.length})</h3>
+              <h3 className="font-semibold">Slides ({slides.length})</h3>
               <Button
                 onClick={handleAddBlankSlide}
                 variant="outline"
                 size="sm"
                 className="h-7 px-2"
               >
-                + חדשה
+                + New
               </Button>
             </div>
             {slides.map((slide, index) => (
@@ -640,8 +642,8 @@ const EditCarousel = () => {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs text-muted-foreground mb-1">שקופית {index + 1}</div>
-                    <div className="text-sm font-medium truncate">{slide.title || "שקופית ריקה"}</div>
+                    <div className="text-xs text-muted-foreground mb-1">Slide {index + 1}</div>
+                    <div className="text-sm font-medium truncate">{slide.title || "Empty slide"}</div>
                   </div>
                   <div className="flex gap-1">
                     <button
@@ -695,35 +697,35 @@ const EditCarousel = () => {
                 {/* Editing controls toolbar below the preview */}
                 <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
                   <Select value={template} onValueChange={(value: "dark" | "light") => setTemplate(value)}>
-                    <SelectTrigger className="w-32" dir="rtl">
+                    <SelectTrigger className="w-32" dir="ltr">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent align="end" dir="rtl">
-                      <SelectItem value="dark">תבנית כהה</SelectItem>
-                      <SelectItem value="light">תבנית בהירה</SelectItem>
+                    <SelectContent align="end" dir="ltr">
+                      <SelectItem value="dark">Dark</SelectItem>
+                      <SelectItem value="light">Light</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={coverStyle} onValueChange={(value) => setCoverStyle(value as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame")}>
-                    <SelectTrigger className="w-40" dir="rtl">
+                    <SelectTrigger className="w-40" dir="ltr">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent align="end" dir="rtl">
-                      <SelectItem value="minimalist">מינימליסטי</SelectItem>
-                      <SelectItem value="big_number">מספר בולט</SelectItem>
-                      <SelectItem value="accent_block">אלמנט דקורטיבי</SelectItem>
-                      <SelectItem value="gradient_overlay">גרדיאנט</SelectItem>
-                      <SelectItem value="geometric">גיאומטרי</SelectItem>
-                      <SelectItem value="bold_frame">מסגרת בולטת</SelectItem>
+                    <SelectContent align="end" dir="ltr">
+                      <SelectItem value="minimalist">Minimalist</SelectItem>
+                      <SelectItem value="big_number">Big number</SelectItem>
+                      <SelectItem value="accent_block">Accent block</SelectItem>
+                      <SelectItem value="gradient_overlay">Gradient</SelectItem>
+                      <SelectItem value="geometric">Geometric</SelectItem>
+                      <SelectItem value="bold_frame">Bold frame</SelectItem>
                     </SelectContent>
                   </Select>
-                  <ColorPicker color={backgroundColor} setColor={setBackgroundColor} title="שינוי רקע" />
-                  <ColorPicker color={textColor} setColor={setTextColor} title="שינוי טקסט" />
-                  <ColorPicker color={accentColor} setColor={setAccentColor} title="שינוי צבע עיצוב" />
+                  <ColorPicker color={backgroundColor} setColor={setBackgroundColor} title="Background" />
+                  <ColorPicker color={textColor} setColor={setTextColor} title="Text" />
+                  <ColorPicker color={accentColor} setColor={setAccentColor} title="Accent" />
                   <Select value={aspectRatio} onValueChange={(value: "1:1" | "4:5") => setAspectRatio(value)}>
-                    <SelectTrigger className="w-28" dir="rtl">
+                    <SelectTrigger className="w-28" dir="ltr">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent align="end" dir="rtl">
+                    <SelectContent align="end" dir="ltr">
                       <SelectItem value="1:1">1:1</SelectItem>
                       <SelectItem value="4:5">4:5</SelectItem>
                     </SelectContent>
@@ -737,12 +739,12 @@ const EditCarousel = () => {
                     {isSaving ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        שומר...
+                        Saving...
                       </>
-                    ) : 'שמור'}
+                    ) : 'Save'}
                   </Button>
                   <Button onClick={() => setExportModalOpen(true)} disabled={exporting} size="sm">
-                    ייצא
+                    Export
                   </Button>
                 </div>
               </div>
@@ -769,8 +771,8 @@ const EditCarousel = () => {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="p-8 text-center">
             <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-lg font-semibold">מייצא...</p>
-            <p className="text-sm text-muted-foreground mt-2">זה עשוי לקחת כמה שניות</p>
+            <p className="text-lg font-semibold">Exporting...</p>
+            <p className="text-sm text-muted-foreground mt-2">This may take a few seconds</p>
           </Card>
         </div>
       )}

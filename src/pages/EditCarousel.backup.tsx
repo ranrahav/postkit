@@ -103,8 +103,8 @@ const EditCarousel = () => {
     } catch (error) {
       console.error("Error fetching carousel:", error);
       toast({
-        title: "שגיאה",
-        description: "לא ניתן לטעון את הקרוסלה",
+        title: "Error",
+        description: "Couldn't load the carousel",
         variant: "destructive",
       });
       navigate("/my-carousels");
@@ -148,14 +148,14 @@ const EditCarousel = () => {
       try {
         await saveCarousel();
         toast({
-          title: "נשמר",
-          description: "השינויים נשמרו אוטומטית",
+          title: "Saved",
+          description: "Changes were saved automatically",
           duration: 2000,
         });
       } catch (error) {
         toast({
-          title: "שגיאה",
-          description: "לא ניתן לשמור את השינויים",
+          title: "Error",
+          description: "Couldn't save changes",
           variant: "destructive",
         });
       }
@@ -181,14 +181,14 @@ const EditCarousel = () => {
     try {
       await saveCarousel();
       toast({
-        title: "נשמר בהצלחה!",
-        description: "השינויים נשמרו",
+        title: "Saved successfully!",
+        description: "Your changes were saved",
       });
     } catch (error) {
       console.error("Error saving carousel:", error);
       toast({
-        title: "שגיאה",
-        description: "לא ניתן לשמור את השינויים",
+        title: "Error",
+        description: "Couldn't save changes",
         variant: "destructive",
       });
     }
@@ -267,21 +267,21 @@ const EditCarousel = () => {
       
       if (failedSlides > 0) {
         toast({
-          title: "חלק מהשקופיות לא יוצרו",
-          description: "נסו שוב.",
+          title: "Some slides failed to export",
+          description: "Please try again.",
           variant: "destructive",
         });
       } else {
         toast({
-          title: "הקרוסלה יוצאה בהצלחה!",
-          description: "הקובץ הורד למחשב שלך",
+          title: "Exported successfully!",
+          description: "The file was downloaded to your computer",
         });
       }
     } catch (error) {
       console.error("Error exporting carousel:", error);
       toast({
-        title: "תקלה ביצוא",
-        description: "נסו שוב או פנו לתמיכה",
+        title: "Export failed",
+        description: "Please try again or contact support",
         variant: "destructive",
       });
     } finally {
@@ -316,15 +316,15 @@ const EditCarousel = () => {
         URL.revokeObjectURL(url);
         
         toast({
-          title: "השקופית יוצאה בהצלחה!",
-          description: "הקובץ הורד למחשב שלך",
+          title: "Slide exported successfully!",
+          description: "The file was downloaded to your computer",
         });
       }
     } catch (error) {
       console.error("Error exporting slide:", error);
       toast({
-        title: "תקלה ביצוא",
-        description: "נסו שוב או פנו לתמיכה",
+        title: "Export failed",
+        description: "Please try again or contact support",
         variant: "destructive",
       });
     } finally {
@@ -335,8 +335,8 @@ const EditCarousel = () => {
   const handleDeleteSlide = (index: number) => {
     if (slides.length <= 2) {
       toast({
-        title: "שגיאה",
-        description: "קרוסלה חייבת להכיל לפחות 2 שקופיות",
+        title: "Error",
+        description: "A carousel must have at least 2 slides",
         variant: "destructive",
       });
       return;
@@ -368,8 +368,8 @@ const EditCarousel = () => {
     setSlides([...slides, newSlide]);
     setSelectedSlideIndex(slides.length);
     toast({
-      title: "שקופית חדשה נוספה",
-      description: "ניתן לערוך את התוכן כעת",
+      title: "New slide added",
+      description: "You can edit the content now",
     });
   };
 
@@ -413,8 +413,8 @@ const EditCarousel = () => {
 const handleDeleteSlide = (index: number) => {
   if (slides.length <= 2) {
     toast({
-      title: "שגיאה",
-      description: "קרוסלה חייבת להכיל לפחות 2 שקופיות",
+      title: "Error",
+      description: "A carousel must have at least 2 slides",
       variant: "destructive",
     });
     return;
@@ -446,8 +446,8 @@ const handleAddBlankSlide = () => {
   setSlides([...slides, newSlide]);
   setSelectedSlideIndex(slides.length);
   toast({
-    title: "שקופית חדשה נוספה",
-    description: "ניתן לערוך את התוכן כעת",
+    title: "New slide added",
+    description: "You can edit the content now",
   });
 };
 
@@ -503,8 +503,8 @@ if (loading) {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="p-8 text-center">
             <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-lg font-semibold">מייצא...</p>
-            <p className="text-sm text-muted-foreground mt-2">זה עשוי לקחת כמה שניות</p>
+            <p className="text-lg font-semibold">Exporting...</p>
+            <p className="text-sm text-muted-foreground mt-2">This may take a few seconds</p>
           </Card>
         </div>
       )}
