@@ -165,15 +165,20 @@ const Auth = () => {
   };
 
   return (
-    <div dir="ltr" className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
-      <Card className="w-full max-w-md p-8 space-y-6">
+    <div dir="ltr" className="relative min-h-screen overflow-hidden bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl" />
+        <div className="absolute -bottom-28 right-10 h-96 w-96 rounded-full bg-accent/20 blur-3xl" />
+      </div>
+
+      <Card className="relative w-full max-w-md p-8 md:p-10 space-y-6 bg-background/60 backdrop-blur-xl border-border/60 shadow-2xl rounded-2xl">
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl">
+            <div className="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-xl ring-1 ring-border/50">
               <Palette className="h-10 w-10 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-l from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent">
             Post24
           </h1>
           <p className="text-muted-foreground">
@@ -257,7 +262,7 @@ const Auth = () => {
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
+                <span className="bg-background/60 px-2 text-muted-foreground">
                   Or
                 </span>
               </div>
@@ -320,7 +325,7 @@ const Auth = () => {
             <button
               type="button"
               onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-normal ease-ios-out"
               disabled={loading}
             >
               {isLogin ? "Don't have an account? Sign up here" : "Already have an account? Sign in here"}

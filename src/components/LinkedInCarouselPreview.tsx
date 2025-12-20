@@ -76,7 +76,7 @@ const LinkedInCarouselPreview = ({
       style={{ width: `${previewWidth}px` }}
     >
       {/* LinkedIn-style container with rounded corners and shadow */}
-      <div className="relative bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 w-full">
+      <div className="relative bg-card rounded-xl shadow-lg overflow-hidden border border-border w-full">
         {/* Slide content */}
         <div className="relative">
           <SlidePreview
@@ -109,18 +109,18 @@ const LinkedInCarouselPreview = ({
             {/* Right-pointing arrow goes to NEXT slide */}
             <button
               onClick={nextSlide}
-              className="bg-white/90 hover:bg-white rounded-full p-2 shadow-md transition-all duration-200 hover:scale-110 border border-gray-200"
+              className="bg-background/90 hover:bg-background rounded-full p-2 shadow-lg border border-border transition-all duration-normal ease-ios-out motion-safe:hover:scale-105"
               aria-label="Next slide"
             >
-              <ChevronRight className="w-5 h-5 text-gray-700" />
+              <ChevronRight className="w-5 h-5 text-foreground" />
             </button>
             {/* Left-pointing arrow goes to PREVIOUS slide */}
             <button
               onClick={prevSlide}
-              className="bg-white/90 hover:bg-white rounded-full p-2 shadow-md transition-all duration-200 hover:scale-110 border border-gray-200"
+              className="bg-background/90 hover:bg-background rounded-full p-2 shadow-lg border border-border transition-all duration-normal ease-ios-out motion-safe:hover:scale-105"
               aria-label="Previous slide"
             >
-              <ChevronLeft className="w-5 h-5 text-gray-700" />
+              <ChevronLeft className="w-5 h-5 text-foreground" />
             </button>
           </div>
 
@@ -130,10 +130,10 @@ const LinkedInCarouselPreview = ({
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-normal ease-ios-out ${
                   index === currentSlideIndex
-                    ? 'bg-gray-800 scale-125'
-                    : 'bg-gray-400/60 hover:bg-gray-600/80'
+                    ? 'bg-foreground scale-125'
+                    : 'bg-muted-foreground/40 hover:bg-muted-foreground/70'
                 }`}
                 aria-label={`Go to slide ${index + 1}`}
               />
@@ -141,7 +141,7 @@ const LinkedInCarouselPreview = ({
           </div>
 
           {/* Right: slide counter */}
-          <div className="text-xs text-gray-600 font-medium">
+          <div className="text-xs text-muted-foreground font-medium">
             {currentSlideIndex + 1}/{slides.length}
           </div>
         </div>

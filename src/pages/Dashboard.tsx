@@ -6,11 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Plus, Search, Download, Edit, Copy, X, ChevronLeft, ChevronRight, Palette } from "lucide-react";
+import { Loader2, Trash2, Plus, Search, Download, Edit, Copy, X, ChevronLeft, ChevronRight, Palette, GripVertical, MoreHorizontal } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { debounce } from "lodash";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import SlidePreview from "@/components/SlidePreview";
 import ColorPicker from "@/components/ui/color-picker";
 
@@ -130,6 +133,11 @@ const Dashboard = () => {
   const [newCarouselCoverStyle, setNewCarouselCoverStyle] = useState<"minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame">("minimalist");
   const [creatingCarousel, setCreatingCarousel] = useState(false);
   
+  // Rename dialog state
+  const [renameModalOpen, setRenameModalOpen] = useState(false);
+  const [renamingCarousel, setRenamingCarousel] = useState<Carousel | null>(null);
+  const [newPostName, setNewPostName] = useState("");
+  
   // Editing state
   const [template, setTemplate] = useState<"dark" | "light">("dark");
   const [coverStyle, setCoverStyle] = useState<"minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame">("minimalist");
@@ -141,6 +149,11 @@ const Dashboard = () => {
   // Drag and drop state
   const [draggedSlideIndex, setDraggedSlideIndex] = useState<number | null>(null);
   const [dragOverSlideIndex, setDragOverSlideIndex] = useState<number | null>(null);
+  const [draggedCarouselIndex, setDraggedCarouselIndex] = useState<number | null>(null);
+  const [dragOverCarouselIndex, setDragOverCarouselIndex] = useState<number | null>(null);
+  
+  // Text panel collapse state
+  const [isTextPanelCollapsed, setIsTextPanelCollapsed] = useState(false);
   
   // Refs
   const slidesContainerRef = useRef<HTMLDivElement>(null);
@@ -206,6 +219,53 @@ const Dashboard = () => {
   const handleDragEnd = () => {
     setDraggedSlideIndex(null);
     setDragOverSlideIndex(null);
+  };
+
+  // Carousel drag and drop handlers
+  const handleCarouselDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedCarouselIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleCarouselDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCarouselIndex(index);
+  };
+
+  const handleCarouselDragLeave = () => {
+    setDragOverCarouselIndex(null);
+  };
+
+  const handleCarouselDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    setDragOverCarouselIndex(null);
+    
+    if (draggedCarouselIndex === null || draggedCarouselIndex === dropIndex) return;
+    
+    const newCarousels = [...filteredCarousels];
+    const draggedCarousel = newCarousels[draggedCarouselIndex];
+    
+    // Remove from old position
+    newCarousels.splice(draggedCarouselIndex, 1);
+    
+    // Insert at new position
+    const adjustedDropIndex = draggedCarouselIndex < dropIndex ? dropIndex - 1 : dropIndex;
+    newCarousels.splice(adjustedDropIndex, 0, draggedCarousel);
+    
+    // Update state
+    setCarousels(newCarousels);
+    setDraggedCarouselIndex(null);
+    
+    // Update selected carousel if needed
+    if (selectedCarousel && selectedCarousel.id === draggedCarousel.id) {
+      selectCarousel(draggedCarousel);
+    }
+  };
+
+  const handleCarouselDragEnd = () => {
+    setDraggedCarouselIndex(null);
+    setDragOverCarouselIndex(null);
   };
 
   // Helper functions to handle Supabase Json type
@@ -783,6 +843,154 @@ const handleCreateCarousel = async () => {
     }
   };
 
+  const handleDuplicateCarousel = async (carousel: Carousel) => {
+    if (!user || !profile || profile.carousel_count >= 10) {
+      toast({
+        title: "Cannot duplicate post",
+        description: "You've reached the maximum limit of 10 posts. Please delete some posts first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Get the current post content and content type from localStorage if available
+      const storedPostContent = getStoredPostContent(carousel.id);
+      const storedContentType = getStoredContentType(carousel.id);
+      const currentPostContent = storedPostContent || carousel.post_content || carousel.original_text || "";
+      const currentContentType = storedContentType || carousel.content_type || "full_post";
+      
+      // Create a new carousel with duplicated content
+      const newCarousel = {
+        user_id: user.id,
+        original_text: carousel.original_text || currentPostContent,
+        slides: carousel.slides,
+        chosen_template: carousel.chosen_template || "dark",
+        cover_style: carousel.cover_style,
+        carousel_name: (() => {
+          const firstSlide = parseSlides(carousel.slides)[0];
+          return firstSlide?.title || "Untitled Carousel";
+        })(),
+        background_color: carousel.background_color || "#000000",
+        text_color: carousel.text_color || "#FFFFFF",
+        accent_color: carousel.accent_color || "#FFFFFF",
+        aspect_ratio: carousel.aspect_ratio || "4:5",
+      };
+
+      const { data: createdCarousel, error } = await supabase
+        .from("carousels")
+        .insert(newCarousel)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Store the post content and content type in localStorage for the duplicated carousel
+      setStoredPostContent(createdCarousel.id, currentPostContent);
+      setStoredContentType(createdCarousel.id, currentContentType);
+
+      // Update profile carousel count
+      await supabase
+        .from("profiles")
+        .update({ carousel_count: profile.carousel_count + 1 })
+        .eq("id", profile.id);
+
+      setProfile({ ...profile, carousel_count: profile.carousel_count + 1 });
+
+      // Add to local state with post content
+      const duplicatedCarousel = {
+        ...createdCarousel,
+        post_content: currentPostContent,
+        content_type: currentContentType,
+      };
+      setCarousels([duplicatedCarousel, ...carousels]);
+
+      toast({
+        title: "Success",
+        description: "Post duplicated successfully",
+      });
+    } catch (error: any) {
+      console.error("Error duplicating carousel:", error);
+      toast({
+        title: "Error",
+        description: "Something went wrong while duplicating the post. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRenameCarousel = (carousel: Carousel) => {
+    const firstSlide = parseSlides(carousel.slides)[0];
+    const currentTitle = firstSlide?.title || "Untitled Post";
+    
+    setRenamingCarousel(carousel);
+    setNewPostName(currentTitle);
+    setRenameModalOpen(true);
+  };
+
+  const handleConfirmRename = async () => {
+    if (!renamingCarousel || !newPostName.trim()) return;
+    
+    try {
+      // Update the first slide's title
+      const updatedSlides = [...parseSlides(renamingCarousel.slides)];
+      if (updatedSlides.length > 0) {
+        updatedSlides[0] = { ...updatedSlides[0], title: newPostName.trim() };
+      }
+      
+      // Update carousel in database
+      const { error } = await supabase
+        .from("carousels")
+        .update({ 
+          slides: updatedSlides as any,
+          carousel_name: newPostName.trim()
+        })
+        .eq("id", renamingCarousel.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      const updatedCarousel = { ...renamingCarousel, slides: updatedSlides };
+      setCarousels(carousels.map(c => c.id === renamingCarousel.id ? updatedCarousel : c));
+      
+      if (selectedCarousel?.id === renamingCarousel.id) {
+        setSelectedCarousel(updatedCarousel);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Post renamed successfully",
+      });
+      
+      // Close dialog
+      setRenameModalOpen(false);
+      setRenamingCarousel(null);
+      setNewPostName("");
+    } catch (error: any) {
+      console.error("Error renaming carousel:", error);
+      toast({
+        title: "Error",
+        description: "Something went wrong while renaming the post. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
+      setCarousels([]);
+      setSelectedCarousel(null);
+      navigate("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Still navigate even if sign out fails
+      navigate("/");
+    }
+  };
+
   // Single, clean function to update design properties
   const updateDesignProperty = async (property: string, value: any) => {
     if (!selectedCarousel) {
@@ -1323,48 +1531,58 @@ const handleCreateCarousel = async () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div dir="rtl" className="relative min-h-screen overflow-hidden bg-gradient-to-b from-background to-muted">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-28 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
+        <div className="absolute -bottom-32 right-10 h-[28rem] w-[28rem] rounded-full bg-accent/20 blur-3xl" />
+      </div>
       {/* Header */}
-      <header dir="ltr" className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="flex items-center justify-between px-6 py-4">
+      <header dir="ltr" className="border-b border-border/40 bg-background/80 backdrop-blur-2xl sticky top-0 z-50 shadow-sm">
+        <div className="flex items-center justify-between px-6 py-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-              <Palette className="h-6 w-6 text-white" />
+            <div className="w-9 h-9 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 ring-1 ring-border/30 backdrop-blur-sm">
+              <Palette className="h-5 w-5 text-white/95" />
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-l from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Post24
-            </h1>
+            <div className="flex flex-col">
+              <h1 className="text-xl font-bold tracking-tight text-primary">
+                Post24
+              </h1>
+            </div>
           </div>
-          <Button variant="ghost" onClick={() => navigate("/")}>
+          <Button 
+            variant="ghost" 
+            onClick={handleSignOut}
+            className="h-9 px-4 rounded-lg text-sm font-medium text-muted-foreground/80 hover:text-foreground hover:bg-background/60 transition-all duration-300 ease-out border border-border/30 hover:border-border/50 shadow-sm"
+          > 
             Sign Out
           </Button>
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-73px)]">
+      <div className="flex h-[calc(100vh-53px)] overflow-hidden">
         {/* Bottom Editing Panel */}
-        <div dir="ltr" className="w-[320px] flex-shrink-0 border-l bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 backdrop-blur-sm flex flex-col border-l-slate-200/50">
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="flex flex-col gap-4">
+        <div dir="ltr" className="w-[320px] flex-shrink-0 border-l border-border/20 bg-[#F3F4F6]/95 backdrop-blur-lg flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-3 scrollbar-thin">
+            <div className="flex flex-col gap-4" style={{ marginTop: '60px' }}>
               {/* Template Selection */}
-              <div className="flex flex-col">
-                <label className="text-sm font-medium mb-2">Template</label>
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm font-semibold text-foreground/90">Template</label>
                 <Select
                   value={selectedCarousel ? selectedCarousel.chosen_template || "dark" : "dark"}
                   onValueChange={handleTemplateChange}
                   disabled={!selectedCarousel}
                 >
-                  <SelectTrigger dir="ltr" className="w-full">
+                  <SelectTrigger dir="ltr" className="w-full h-9 rounded-lg border-border/40 bg-background/60 backdrop-blur-sm focus:bg-background/80 focus:border-primary/50 transition-all duration-300 ease-out">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent align="end" dir="ltr">
+                  <SelectContent align="end" dir="ltr" className="border-border/40 bg-background/80 backdrop-blur-xl w-[200px]">
                     <SelectItem value="dark">Dark</SelectItem>
                     <SelectItem value="light">Light</SelectItem>
                   </SelectContent>
@@ -1372,8 +1590,8 @@ const handleCreateCarousel = async () => {
               </div>
 
               {/* Background Color */}
-              <div className="flex flex-col">
-                <label className="text-sm font-medium mb-2">Background</label>
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm font-semibold text-foreground/90">Background</label>
                 <ColorPicker
                   color={selectedCarousel ? selectedCarousel.background_color || "#000000" : "#000000"}
                   setColor={handleBackgroundColorChange}
@@ -1384,8 +1602,8 @@ const handleCreateCarousel = async () => {
               </div>
 
               {/* Text Color */}
-              <div className="flex flex-col">
-                <label className="text-sm font-medium mb-2">Text</label>
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm font-semibold text-foreground/90">Text</label>
                 <ColorPicker
                   color={selectedCarousel ? selectedCarousel.text_color || "#FFFFFF" : "#FFFFFF"}
                   setColor={handleTextColorChange}
@@ -1396,17 +1614,17 @@ const handleCreateCarousel = async () => {
               </div>
 
               {/* Design Style Selection */}
-              <div className="flex flex-col">
-                <label className="text-sm font-medium mb-2">Style</label>
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm font-semibold text-foreground/90">Style</label>
                 <Select
                   value={selectedCarousel ? selectedCarousel.cover_style || "minimalist" : "minimalist"}
                   onValueChange={handleCoverStyleChange}
                   disabled={!selectedCarousel}
                 >
-                  <SelectTrigger dir="ltr" className="w-full">
+                  <SelectTrigger dir="ltr" className="w-full h-9 rounded-lg border-border/40 bg-background/60 backdrop-blur-sm focus:bg-background/80 focus:border-primary/50 transition-all duration-300 ease-out">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent align="end" dir="ltr">
+                  <SelectContent align="end" dir="ltr" className="border-border/40 bg-background/80 backdrop-blur-xl w-[200px]">
                     <SelectItem value="minimalist">Minimalist</SelectItem>
                     <SelectItem value="big_number">Big Number</SelectItem>
                     <SelectItem value="accent_block">Accent Block</SelectItem>
@@ -1418,8 +1636,8 @@ const handleCreateCarousel = async () => {
               </div>
 
               {/* Accent Color */}
-              <div className="flex flex-col">
-                <label className="text-sm font-medium mb-2">Accent</label>
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm font-semibold text-foreground/90">Accent</label>
                 <ColorPicker
                   color={selectedCarousel ? selectedCarousel.accent_color || "#FFFFFF" : "#FFFFFF"}
                   setColor={handleAccentColorChange}
@@ -1430,19 +1648,19 @@ const handleCreateCarousel = async () => {
               </div>
 
               {/* Aspect Ratio */}
-              <div className="flex flex-col">
-                <label className="text-sm font-medium mb-2">Aspect Ratio</label>
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm font-semibold text-foreground/90">Aspect Ratio</label>
                 <Select
                   value={selectedCarousel ? selectedCarousel.aspect_ratio || "4:5" : "4:5"}
                   onValueChange={handleAspectRatioChange}
                   disabled={!selectedCarousel}
                 >
-                  <SelectTrigger dir="ltr" className="w-full">
+                  <SelectTrigger dir="ltr" className="w-full h-9 rounded-lg border-border/40 bg-background/60 backdrop-blur-sm focus:bg-background/80 focus:border-primary/50 transition-all duration-300 ease-out">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent align="end" dir="ltr">
-                    <SelectItem value="1:1">1:1</SelectItem>
-                    <SelectItem value="4:5">4:5</SelectItem>
+                  <SelectContent align="end" dir="ltr" className="border-border/40 bg-background/80 backdrop-blur-xl w-[200px]">
+                    <SelectItem value="1:1">1:1 (Square)</SelectItem>
+                    <SelectItem value="4:5">4:5 (Portrait)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1451,9 +1669,9 @@ const handleCreateCarousel = async () => {
         </div>
 
         {/* Main Content Area - Slide Previews */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 bg-[#C0C0C0]/80 backdrop-blur-xs overflow-hidden">
           {/* Preview Area */}
-          <div className="flex-1 p-6 overflow-auto">
+          <div className="flex-1 p-4 overflow-auto scrollbar-thin">
             {selectedCarousel ? (
               <div className="h-full flex flex-col">
                 {/* Horizontal Slides Container */}
@@ -1471,12 +1689,12 @@ const handleCreateCarousel = async () => {
                       <div
                         key={index}
                         data-slide-index={index}
-                        className={`flex-shrink-0 relative transition-all duration-300 cursor-pointer ${
+                        className={`flex-shrink-0 relative transition-all duration-slow ease-ios-out cursor-pointer ${
                           isActive 
                             ? "scale-120 opacity-100 z-10" 
                             : "scale-100 opacity-60 hover:opacity-80"
                         } ${draggedSlideIndex === index ? "opacity-50 cursor-grabbing" : ""} ${
-                          dragOverSlideIndex === index ? "ring-2 ring-blue-400 ring-offset-2" : ""
+                          dragOverSlideIndex === index ? "ring-2 ring-ring/60 ring-offset-2 ring-offset-background" : ""
                         }`}
                         onClick={() => {
                           setSelectedSlideIndex(index);
@@ -1509,7 +1727,7 @@ const handleCreateCarousel = async () => {
                             textDirection={detectTextDirection(slide.title + " " + slide.body)}
                           />
                           {/* Slide count below the slide */}
-                          <div className="text-center mt-2 text-sm font-medium text-slate-600">
+                          <div className="text-center mt-2 text-sm font-medium text-muted-foreground">
                             {visualSlideNumber}/{parseSlides(selectedCarousel.slides).length}
                           </div>
                         </div>
@@ -1562,11 +1780,11 @@ const handleCreateCarousel = async () => {
                       <div className="flex-shrink-0">
                         <button
                           onClick={handleAddNewSlide}
-                          className="w-[400px] h-[calc(100vh-300px)] max-h-[600px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 group"
+                          className="w-[400px] h-[calc(100vh-300px)] max-h-[600px] rounded-lg border-2 border-dashed border-border bg-card/20 flex items-center justify-center transition-all duration-normal ease-ios-out hover:border-ring/40 hover:bg-card/40 group"
                         >
                           <div className="text-center">
-                            <Plus className="w-12 h-12 mx-auto mb-2 text-slate-400 group-hover:text-slate-600 transition-colors" />
-                            <p className="text-slate-500 group-hover:text-slate-700 transition-colors">Add New Slide</p>
+                            <Plus className="w-12 h-12 mx-auto mb-2 text-muted-foreground group-hover:text-foreground transition-colors duration-normal ease-ios-out" />
+                            <p className="text-muted-foreground group-hover:text-foreground/80 transition-colors duration-normal ease-ios-out">Add New Slide</p>
                           </div>
                         </button>
                       </div>
@@ -1579,7 +1797,7 @@ const handleCreateCarousel = async () => {
                       {selectedSlideIndex < parseSlides(selectedCarousel.slides).length - 1 && (
                         <button
                           onClick={() => navigateSlide(1)}
-                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-background/90 hover:bg-background rounded-full p-2 shadow-lg border border-border transition-all duration-200 hover:scale-110 z-30"
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-background/90 hover:bg-background rounded-full p-2 shadow-lg border border-border transition-all duration-normal ease-ios-out motion-safe:hover:scale-105 z-30"
                         >
                           <ChevronRight className="w-5 h-5" />
                         </button>
@@ -1587,7 +1805,7 @@ const handleCreateCarousel = async () => {
                       {selectedSlideIndex > 0 && (
                         <button
                           onClick={() => navigateSlide(-1)}
-                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-background/90 hover:bg-background rounded-full p-2 shadow-lg border border-border transition-all duration-200 hover:scale-110 z-30"
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-background/90 hover:bg-background rounded-full p-2 shadow-lg border border-border transition-all duration-normal ease-ios-out motion-safe:hover:scale-105 z-30"
                         >
                           <ChevronLeft className="w-5 h-5" />
                         </button>
@@ -1605,7 +1823,7 @@ const handleCreateCarousel = async () => {
                   </p>
                   <Button onClick={() => setCreateModalOpen(true)}>
                     <Plus className="ml-2 h-4 w-4" />
-                    Create New Carousel
+                    New Post
                   </Button>
                 </div>
               </div>
@@ -1614,98 +1832,126 @@ const handleCreateCarousel = async () => {
         </div>
 
         {/* Post Content Panel */}
-        <div className="w-[400px] flex-shrink-0 border-r bg-gradient-to-br from-slate-50 to-slate-100 backdrop-blur-sm flex flex-col border-r-slate-200/50">
+        <div className={`${isTextPanelCollapsed ? 'w-12' : 'w-[400px]'} flex-shrink-0 border-r border-border/20 bg-[#FAFAFB]/90 backdrop-blur-sm flex flex-col overflow-hidden transition-all duration-300 ease-in-out`}>
           {selectedCarousel ? (
-            <>
-              {/* Post Content Header */}
-              <div className="p-4 border-b bg-white/50 backdrop-blur-sm border-b-slate-200/30 text-left" dir="ltr">
-                <h3 className="font-semibold text-sm mb-1">
-                  {selectedCarousel.content_type === "topic_idea" ? "Topic/Idea" : "Full Post"}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {selectedCarousel.content_type === "topic_idea" 
-                    ? "This topic/idea was developed into the carousel slides" 
-                    : "Complete post content for reference"}
-                </p>
+            <div className="flex flex-col overflow-hidden">
+              {/* Panel Header with Toggle */}
+              <div className="flex items-center justify-end p-3 border-b border-border/20 bg-[#FAFAFB]/80">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsTextPanelCollapsed(!isTextPanelCollapsed)}
+                  className="h-8 w-8 p-0 hover:bg-background/60"
+                >
+                  {isTextPanelCollapsed ? (
+                    <span className="text-sm font-bold">«</span>
+                  ) : (
+                    <span className="text-sm font-bold">»</span>
+                  )}
+                </Button>
               </div>
-
-              {/* Post Content Editor */}
-              <div className="flex-1 p-4">
-                <Textarea
-                  value={selectedCarousel.post_content || ""}
-                  onChange={(e) => {
-                    const updatedCarousel = { ...selectedCarousel, post_content: e.target.value };
-                    setSelectedCarousel(updatedCarousel);
-                    setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
-                    
-                    // Save to database
-                    updateDesignProperty('post_content', e.target.value);
-                  }}
-                  placeholder={selectedCarousel.content_type === "topic_idea" 
-                    ? "Enter your topic or idea here..." 
-                    : "Enter your full post content here..."}
-                  className="h-full min-h-[400px] resize-none text-base text-left"
-                  style={{ textAlign: 'left', direction: 'ltr' }}
-                  dir="ltr"
-                  disabled={selectedCarousel?.id === 'welcome-carousel'}
-                />
-              </div>
-
-              {/* Post Content Footer */}
-              <div className="p-4 border-t bg-white/30 backdrop-blur-sm border-t-slate-200/30 text-left" dir="ltr">
-                <div className="text-xs text-muted-foreground">
-                  {(selectedCarousel.post_content || "").trim().split(/\s+/).filter(word => word.length > 0).length} words
+              
+              {/* Continuous Post Content Area - aligned with first post name */}
+              {!isTextPanelCollapsed && (
+                <div className="flex-1 overflow-y-auto scrollbar-thin" dir="ltr">
+                  {/* Push down to align with post titles - add top margin to match posts panel header height */}
+                  <div style={{ marginTop: '120px' }}>
+                    <div className="px-3">
+                      <h3 className="font-semibold text-base mb-1 text-foreground/95">{(() => {
+                          const firstSlide = parseSlides(selectedCarousel.slides)[0];
+                          return firstSlide?.title || "Untitled Post";
+                        })()}</h3>
+                      <div className="flex gap-2 text-xs text-muted-foreground/70 mb-3">
+                        <span>{selectedCarousel.content_type === "topic_idea" ? "Generated by Post24" : "Generated by you"}</span>
+                        <span>•</span>
+                        <span>{(selectedCarousel.post_content || "").trim().split(/\s+/).filter(word => word.length > 0).length} words</span>
+                      </div>
+                    </div>
+                    <div className="px-3 pb-3">
+                      <Textarea
+                        value={selectedCarousel.post_content || ""}
+                        onChange={(e) => {
+                          const updatedCarousel = { ...selectedCarousel, post_content: e.target.value };
+                          setSelectedCarousel(updatedCarousel);
+                          setCarousels(carousels.map(c => c.id === selectedCarousel.id ? updatedCarousel : c));
+                          
+                          // Save to database
+                          updateDesignProperty('post_content', e.target.value);
+                        }}
+                        placeholder={selectedCarousel.content_type === "topic_idea" 
+                          ? "Enter your topic or idea here..." 
+                          : "Enter your full post content here..."}
+                        className="w-full resize-none border-border/40 bg-[#FFFFFF] focus:bg-[#FFFFFF] focus:border-primary/50 transition-all duration-300 ease-out rounded-xl text-sm leading-relaxed"
+                        style={{ textAlign: 'left', direction: 'ltr', minHeight: '800px' }}
+                        dir="ltr"
+                        disabled={selectedCarousel?.id === 'welcome-carousel'}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </>
+              )}
+            </div>
           ) : (
-            <div className="h-full flex items-center justify-center p-4">
-              <div className="text-center space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Select a carousel to view and edit its post content
-                </p>
+            <div className="flex flex-col h-full">
+              {/* Panel Header with Toggle */}
+              <div className="flex items-center justify-end p-3 border-b border-border/20 bg-[#FAFAFB]/80">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsTextPanelCollapsed(!isTextPanelCollapsed)}
+                  className="h-8 w-8 p-0 hover:bg-background/60"
+                >
+                  {isTextPanelCollapsed ? (
+                    <span className="text-sm font-bold">«</span>
+                  ) : (
+                    <span className="text-sm font-bold">»</span>
+                  )}
+                </Button>
               </div>
+              
+              {!isTextPanelCollapsed && (
+                <div className="h-full flex items-center justify-center p-4">
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Select a carousel to view and edit its post content
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Right Panel - Carousel List */}
-        <div className="w-[320px] flex-shrink-0 bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 backdrop-blur-sm flex flex-col border-l-slate-200/50">
-          {/* Search and Add */}
-          <div className="p-4 border-b space-y-3 bg-white/50 backdrop-blur-sm border-b-slate-200/30">
+        <div dir="ltr" className="w-[320px] flex-shrink-0 border-l border-border/20 bg-[#F3F4F6]/95 backdrop-blur-md flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-border/30 bg-[#F3F4F6]/60 backdrop-blur-sm text-left" dir="ltr">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[#111827]/90">Posts</h2>
+              <span className="text-sm text-[#6B7280]/70 font-medium">
+                {profile?.carousel_count || 0}/10
+              </span>
+            </div>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
               <Input
-                dir="ltr"
-                placeholder="Search carousel..."
+                placeholder="Search Post"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 h-10 rounded-xl border-border/40 bg-background/60 backdrop-blur-sm focus:bg-background/80 focus:border-primary/50 transition-all duration-300 ease-out text-sm"
               />
             </div>
             <Button
               onClick={() => setCreateModalOpen(true)}
-              className="w-full"
-              size="sm"
+              className="w-full mt-3 h-11 rounded-xl bg-primary/90 hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 ease-out font-medium text-sm"
             >
-              <Plus className="ml-2 h-4 w-4" />
-              New Carousel
+              <Plus className="h-4 w-4 mr-2" />
+              New Post
             </Button>
           </div>
 
-          {/* Carousel Count */}
-          {profile && (
-            <div className="px-4 py-2 border-b bg-white/30 backdrop-blur-sm border-b-slate-200/30">
-              <div className="text-center">
-                <span className="text-sm font-medium text-slate-700">
-                  {profile.carousel_count}/10 Carousels
-                </span>
-              </div>
-            </div>
-          )}
-
+          
           {/* Carousel List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
             {filteredCarousels.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">No carousels found</p>
@@ -1715,64 +1961,107 @@ const handleCreateCarousel = async () => {
                   size="sm"
                 >
                   <Plus className="ml-2 h-4 w-4" />
-                  Create First Carousel
+                  Create First Post
                 </Button>
               </div>
             ) : (
-              filteredCarousels.map((carousel) => {
+              filteredCarousels.map((carousel, index) => {
                 const firstSlide = parseSlides(carousel.slides)[0];
                 const isWelcomeCarousel = carousel.id === 'welcome-carousel';
                 return (
                   <Card
                     key={carousel.id}
-                    className={`p-3 cursor-pointer transition-all ${
-                      selectedCarousel?.id === carousel.id
-                        ? "ring-2 ring-accent bg-accent/5"
-                        : "hover:bg-muted/50"
-                    } ${
-                      isWelcomeCarousel ? 'border-blue-200 bg-blue-50/30' : ''
-                    }`}
+                    className={`mx-3 my-2 p-4 cursor-pointer transition-all duration-300 ease-out border-border/40 bg-[#FAFAFB]/80 backdrop-blur-sm hover:bg-[#FAFAFB] hover:shadow-md hover:shadow-slate-200/60 hover:border-border/60 ${selectedCarousel?.id === carousel.id ? "ring-2 ring-primary/50 bg-[#FAFAFB] border-primary/40 shadow-md shadow-primary/10" : ""} ${isWelcomeCarousel && selectedCarousel?.id !== carousel.id ? 'border-border/30 bg-[#FAFAFB]/70' : ''} ${draggedCarouselIndex === index ? "opacity-50 cursor-grabbing scale-95" : ""} ${dragOverCarouselIndex === index ? "ring-2 ring-primary/50 ring-offset-2 ring-offset-[#F3F4F6]/95 scale-[1.02]" : ""} rounded-xl`}
                     onClick={() => selectCarousel(carousel)}
+                    draggable={!isWelcomeCarousel}
+                    onDragStart={(e) => !isWelcomeCarousel && handleCarouselDragStart(e, index)}
+                    onDragOver={(e) => !isWelcomeCarousel && handleCarouselDragOver(e, index)}
+                    onDragLeave={handleCarouselDragLeave}
+                    onDrop={(e) => !isWelcomeCarousel && handleCarouselDrop(e, index)}
+                    onDragEnd={handleCarouselDragEnd}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0" style={{ direction: detectTextDirection(firstSlide?.title || "Untitled") }}>
-                        <h3 className="font-semibold text-sm mb-1 truncate" style={{ textAlign: detectTextDirection(firstSlide?.title || "Untitled") === "rtl" ? "right" : "left" }}>
-                          {firstSlide?.title || "Untitled"}
-                        </h3>
-                        <p className="text-xs text-muted-foreground" style={{ textAlign: detectTextDirection(firstSlide?.title || "Untitled") === "rtl" ? "right" : "left" }}>
-                          {parseSlides(carousel.slides).length} slides • {" "}
-                          {formatDistanceToNow(new Date(carousel.created_at), {
-                            addSuffix: true,
-                          })}
-                        </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="flex gap-1 flex-shrink-0">
+                          {!isWelcomeCarousel && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-background/90 backdrop-blur-xl border-border/60 rounded-xl">
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleExportCarousel(carousel);
+                                  }}
+                                  disabled={exporting}
+                                  className="rounded-lg cursor-pointer"
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleRenameCarousel(carousel);
+                                  }}
+                                  className="rounded-lg cursor-pointer"
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDuplicateCarousel(carousel);
+                                  }}
+                                  className="rounded-lg cursor-pointer"
+                                >
+                                  <Copy className="h-4 w-4 mr-2" />
+                                  Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDeleteCarousel(carousel.id);
+                                  }}
+                                  className="rounded-lg cursor-pointer text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0" style={{ direction: detectTextDirection(firstSlide?.title || "Untitled") }}>
+                          <h3 className="font-semibold text-sm mb-1 truncate text-left">
+                            {firstSlide?.title || "Untitled"}
+                          </h3>
+                          <p className="text-xs text-muted-foreground text-left">
+                            {parseSlides(carousel.slides).length} slides • {" "}
+                            {formatDistanceToNow(new Date(carousel.created_at), {
+                              addSuffix: true,
+                            })}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         {!isWelcomeCarousel && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleExportCarousel(carousel);
-                              }}
-                              disabled={exporting}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteCarousel(carousel.id);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
+                          <div className="text-muted-foreground cursor-grab active:cursor-grabbing">
+                            <GripVertical className="h-4 w-4" />
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1786,136 +2075,183 @@ const handleCreateCarousel = async () => {
 
       {/* Create Carousel Modal */}
       {createModalOpen && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto" dir="ltr">
-            <div className="p-6 space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Create New Carousel</h2>
+        <div className="fixed inset-0 bg-background/60 backdrop-blur-xl z-50 flex items-center justify-center p-4">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+            <div className="absolute -top-32 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl" />
+            <div className="absolute -bottom-32 right-10 h-96 w-96 rounded-full bg-accent/20 blur-3xl" />
+          </div>
+          <Card className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-background/70 backdrop-blur-xl border-border/60 shadow-2xl rounded-3xl" dir="ltr">
+            <div className="p-8 space-y-8">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-2">
+                <div className="space-y-1">
+                  <h2 className="text-3xl font-bold tracking-tight text-foreground">
+                    New Post
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Transform your content into a beautiful visual story
+                  </p>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setCreateModalOpen(false)}
+                  className="h-10 w-10 rounded-full hover:bg-muted/50 transition-all duration-normal ease-ios-out motion-safe:hover:scale-105"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
 
+              {/* Content Type Section */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Content Type</label>
+                  <Label className="text-base font-semibold tracking-tight">Content Type</Label>
                   <RadioGroup
                     value={newCarouselContentType}
                     onValueChange={(value) => setNewCarouselContentType(value as "topic_idea" | "full_post")}
                     disabled={creatingCarousel}
-                    className="flex flex-col space-y-2"
+                    className="grid grid-cols-1 gap-3"
                   >
-                    <div className="flex items-center space-x-2 space-x-reverse">
-                      <RadioGroupItem value="topic_idea" id="topic_idea" />
-                      <label htmlFor="topic_idea" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                        Topic or idea
-                      </label>
+                    <div className="group relative rounded-2xl border border-border/60 bg-background/40 p-4 transition-all duration-normal ease-ios-out hover:border-border hover:bg-muted/30 motion-safe:hover:scale-[1.02] cursor-pointer">
+                      <div className="flex items-start space-x-3">
+                        <RadioGroupItem value="topic_idea" id="topic_idea" className="mt-1" />
+                        <div className="flex-1 space-y-1">
+                          <label htmlFor="topic_idea" className="text-sm font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                            Topic or idea
+                          </label>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            1-2 sentences about a topic or idea that will be developed into a post. The key messages should be in the carousel slides.
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mr-6">
-                      1-2 sentences about a topic or idea that will be developed into a post. The key messages should be in the carousel slides.
-                    </p>
-                    <div className="flex items-center space-x-2 space-x-reverse mt-3">
-                      <RadioGroupItem value="full_post" id="full_post" />
-                      <label htmlFor="full_post" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                        Full post
-                      </label>
+                    <div className="group relative rounded-2xl border border-border/60 bg-background/40 p-4 transition-all duration-normal ease-ios-out hover:border-border hover:bg-muted/30 motion-safe:hover:scale-[1.02] cursor-pointer">
+                      <div className="flex items-start space-x-3">
+                        <RadioGroupItem value="full_post" id="full_post" className="mt-1" />
+                        <div className="flex-1 space-y-1">
+                          <label htmlFor="full_post" className="text-sm font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                            Full post
+                          </label>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            Complete post content. No post development needed - key messages should go directly into carousel slides.
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mr-6">
-                      Complete post content. No post development needed - key messages should go directly into carousel slides.
-                    </p>
                   </RadioGroup>
                 </div>
 
+                {/* Content Input */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">
+                  <Label className="text-base font-semibold tracking-tight">
                     {newCarouselContentType === "topic_idea" ? "Topic or Idea" : "Full Post Content"}
-                  </label>
+                  </Label>
                   <Textarea
                     placeholder={newCarouselContentType === "topic_idea" 
                       ? "Enter 1-2 sentences describing your topic or idea..." 
                       : "Paste your complete post content here..."}
                     value={newCarouselText}
                     onChange={(e) => setNewCarouselText(e.target.value)}
-                    className="min-h-[200px] text-base resize-none"
+                    className="min-h-[180px] text-base resize-none bg-background/60 border-border/60 rounded-2xl px-4 py-3 transition-all duration-normal ease-ios-out focus:bg-background/80 focus:border-primary/50"
                     disabled={creatingCarousel}
                   />
-                  <div className="text-sm text-muted-foreground">
-                    {newCarouselText.trim().split(/\s+/).filter(word => word.length > 0).length} words
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      {newCarouselText.trim().split(/\s+/).filter(word => word.length > 0).length} words
+                    </p>
+                    {newCarouselText.trim().split(/\s+/).filter(word => word.length > 0).length > 300 && (
+                      <p className="text-xs text-amber-600">
+                        Consider keeping content concise for better engagement
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Content Purpose</label>
-                  <select
-                    value={newCarouselContentPurpose}
-                    onChange={(e) => setNewCarouselContentPurpose(e.target.value)}
-                    className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                    disabled={creatingCarousel}
-                  >
-                    <option value="awareness">Awareness → 25–75 words</option>
-                    <option value="thought_leadership">Thought leadership or storytelling → 100–300 words</option>
-                    <option value="opinion">Opinion or conversation starter → &lt;20 words</option>
-                  </select>
+                {/* Settings Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-carousel-content-purpose" className="text-base font-semibold tracking-tight">Content Purpose</Label>
+                    <Select
+                      value={newCarouselContentPurpose}
+                      onValueChange={setNewCarouselContentPurpose}
+                      disabled={creatingCarousel}
+                    >
+                      <SelectTrigger id="new-carousel-content-purpose" className="bg-background/60 border-border/60 rounded-2xl px-4 py-3 transition-all duration-normal ease-ios-out focus:bg-background/80 focus:border-primary/50" dir="ltr">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align="end" dir="ltr" className="bg-background/90 backdrop-blur-xl border-border/60 rounded-2xl">
+                        <SelectItem value="awareness" className="rounded-xl">Awareness → 25–75 words</SelectItem>
+                        <SelectItem value="thought_leadership" className="rounded-xl">Thought leadership or storytelling → 100–300 words</SelectItem>
+                        <SelectItem value="opinion" className="rounded-xl">Opinion or conversation starter → &lt;20 words</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-carousel-style" className="text-base font-semibold tracking-tight">Content Style</Label>
+                    <Select value={newCarouselStyle} onValueChange={setNewCarouselStyle} disabled={creatingCarousel}>
+                      <SelectTrigger id="new-carousel-style" className="bg-background/60 border-border/60 rounded-2xl px-4 py-3 transition-all duration-normal ease-ios-out focus:bg-background/80 focus:border-primary/50" dir="ltr">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align="end" dir="ltr" className="bg-background/90 backdrop-blur-xl border-border/60 rounded-2xl">
+                        <SelectItem value="Professional" className="rounded-xl">Professional</SelectItem>
+                        <SelectItem value="Storytelling" className="rounded-xl">Storytelling</SelectItem>
+                        <SelectItem value="Educational" className="rounded-xl">Educational</SelectItem>
+                        <SelectItem value="List / Tips" className="rounded-xl">List / Tips</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
+                {/* Cover Style */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Content Style</label>
-                  <select
-                    value={newCarouselStyle}
-                    onChange={(e) => setNewCarouselStyle(e.target.value)}
-                    className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                    disabled={creatingCarousel}
-                  >
-                    <option value="Professional">Professional</option>
-                    <option value="Storytelling">Storytelling</option>
-                    <option value="Educational">Educational</option>
-                    <option value="List / Tips">List / Tips</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Cover Style</label>
-                  <select
+                  <Label htmlFor="new-carousel-cover-style" className="text-base font-semibold tracking-tight">Cover Style</Label>
+                  <Select
                     value={newCarouselCoverStyle}
-                    onChange={(e) => setNewCarouselCoverStyle(e.target.value as any)}
-                    className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                    onValueChange={(value) =>
+                      setNewCarouselCoverStyle(
+                        value as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame",
+                      )
+                    }
                     disabled={creatingCarousel}
                   >
-                    <option value="minimalist">Minimalist</option>
-                    <option value="big_number">Big Number</option>
-                    <option value="accent_block">Accent Block</option>
-                    <option value="gradient_overlay">Gradient</option>
-                    <option value="geometric">Geometric</option>
-                    <option value="bold_frame">Bold Frame</option>
-                  </select>
+                    <SelectTrigger id="new-carousel-cover-style" className="bg-background/60 border-border/60 rounded-2xl px-4 py-3 transition-all duration-normal ease-ios-out focus:bg-background/80 focus:border-primary/50" dir="ltr">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="end" dir="ltr" className="bg-background/90 backdrop-blur-xl border-border/60 rounded-2xl">
+                      <SelectItem value="minimalist" className="rounded-xl">Minimalist</SelectItem>
+                      <SelectItem value="big_number" className="rounded-xl">Big Number</SelectItem>
+                      <SelectItem value="accent_block" className="rounded-xl">Accent Block</SelectItem>
+                      <SelectItem value="gradient_overlay" className="rounded-xl">Gradient</SelectItem>
+                      <SelectItem value="geometric" className="rounded-xl">Geometric</SelectItem>
+                      <SelectItem value="bold_frame" className="rounded-xl">Bold Frame</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
                 <Button
                   variant="outline"
                   onClick={() => setCreateModalOpen(false)}
                   disabled={creatingCarousel}
-                  className="flex-1"
+                  className="flex-1 h-12 rounded-2xl border-border/60 bg-background/40 hover:bg-muted/50 transition-all duration-normal ease-ios-out text-base font-medium"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleCreateCarousel}
                   disabled={creatingCarousel || !newCarouselText.trim()}
-                  className="flex-1"
+                  className="flex-1 h-12 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-normal ease-ios-out shadow-lg hover:shadow-xl motion-safe:hover:scale-[1.02] text-base font-medium"
                 >
                   {creatingCarousel ? (
                     <>
-                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Creating carousel...
                     </>
                   ) : (
-                    "Create Slide Structure"
+                    "Create New Post"
                   )}
                 </Button>
               </div>
@@ -1934,6 +2270,50 @@ const handleCreateCarousel = async () => {
           </Card>
         </div>
       )}
+
+      {/* Rename Dialog */}
+      <Dialog open={renameModalOpen} onOpenChange={setRenameModalOpen}>
+        <DialogContent className="bg-background/95 backdrop-blur-xl border-border/60 rounded-2xl max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">Rename Post</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="post-name" className="text-sm font-medium">
+                Post Title
+              </Label>
+              <Input
+                id="post-name"
+                value={newPostName}
+                onChange={(e) => setNewPostName(e.target.value)}
+                placeholder="Enter post title..."
+                className="border-border/60 bg-background/40 focus:bg-background/60 transition-all duration-normal ease-ios-out"
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRenameModalOpen(false);
+                setRenamingCarousel(null);
+                setNewPostName("");
+              }}
+              className="flex-1 h-10 rounded-xl border-border/60 bg-background/40 hover:bg-muted/50 transition-all duration-normal ease-ios-out"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmRename}
+              disabled={!newPostName.trim()}
+              className="flex-1 h-10 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-normal ease-ios-out shadow-lg hover:shadow-xl motion-safe:hover:scale-[1.02]"
+            >
+              Rename
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -80,6 +80,23 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        sm: "var(--shadow-sm)",
+        DEFAULT: "var(--shadow-md)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
+        xl: "var(--shadow-lg)",
+        "2xl": "var(--shadow-lg)",
+      },
+      transitionDuration: {
+        fast: "var(--motion-fast)",
+        normal: "var(--motion-normal)",
+        slow: "var(--motion-slow)",
+      },
+      transitionTimingFunction: {
+        "ios-out": "var(--ease-out)",
+        "ios-in-out": "var(--ease-in-out)",
+      },
       keyframes: {
         "accordion-down": {
           from: {
@@ -99,8 +116,8 @@ export default {
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        "accordion-down": "accordion-down var(--motion-normal) var(--ease-out)",
+        "accordion-up": "accordion-up var(--motion-normal) var(--ease-out)",
       },
     },
   },

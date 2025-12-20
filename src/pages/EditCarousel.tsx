@@ -594,8 +594,13 @@ const EditCarousel = () => {
   const selectedSlide = slides[selectedSlideIndex];
 
   return (
-    <div dir="ltr" className="min-h-screen bg-gradient-to-b from-background to-muted">
-      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+    <div dir="ltr" className="relative min-h-screen overflow-hidden bg-gradient-to-b from-background to-muted">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-28 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
+        <div className="absolute -bottom-32 right-10 h-[28rem] w-[28rem] rounded-full bg-accent/20 blur-3xl" />
+      </div>
+
+      <header className="border-b border-border/60 bg-background/70 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <h1 className="text-2xl font-bold bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent">
             SlideMint
@@ -608,17 +613,20 @@ const EditCarousel = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex gap-3 max-w-7xl mx-auto" style={{ height: 'calc(100vh - 120px)' }}>
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex gap-6 max-w-7xl mx-auto" style={{ height: 'calc(100vh - 136px)' }}>
           {/* Slide list - move to the opposite side of the preview */}
-          <Card className="w-64 p-3 space-y-2 overflow-y-auto flex-shrink-0 order-2">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold">Slides ({slides.length})</h3>
+          <Card className="w-72 p-4 space-y-3 overflow-y-auto flex-shrink-0 order-2 bg-background/60 backdrop-blur-xl border-border/60 shadow-2xl rounded-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold tracking-tight">Slides</h3>
+                <p className="text-xs text-muted-foreground">{slides.length} total</p>
+              </div>
               <Button
                 onClick={handleAddBlankSlide}
                 variant="outline"
                 size="sm"
-                className="h-7 px-2"
+                className="h-8 px-2.5"
               >
                 + New
               </Button>
@@ -630,10 +638,10 @@ const EditCarousel = () => {
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
-                className={`p-2 rounded-lg border cursor-move transition-all ${
+                className={`group p-3 rounded-xl border border-border/60 bg-background/40 cursor-move transition-all duration-normal ease-ios-out motion-safe:hover:-translate-y-px hover:bg-muted/40 ${
                   selectedSlideIndex === index
-                    ? "bg-accent/10 border-accent"
-                    : "hover:bg-muted"
+                    ? "bg-accent/10 border-border ring-2 ring-ring/25"
+                    : ""
                 } ${draggedIndex === index ? "opacity-50" : ""}`}
                 onClick={() => {
                   setSelectedSlideIndex(index);
@@ -643,7 +651,12 @@ const EditCarousel = () => {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-muted-foreground mb-1">Slide {index + 1}</div>
-                    <div className="text-sm font-medium truncate">{slide.title || "Empty slide"}</div>
+                    <div className="text-sm font-semibold truncate">{slide.title || "Empty slide"}</div>
+                    {slide.body && (
+                      <div className="mt-1 text-xs text-muted-foreground truncate">
+                        {slide.body}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     <button
@@ -651,7 +664,7 @@ const EditCarousel = () => {
                         e.stopPropagation();
                         handleDuplicateSlide(index);
                       }}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="rounded-md p-1 text-muted-foreground transition-colors duration-normal ease-ios-out hover:text-foreground hover:bg-muted/50"
                     >
                       <Copy className="h-3 w-3" />
                     </button>
@@ -660,7 +673,7 @@ const EditCarousel = () => {
                         e.stopPropagation();
                         handleDeleteSlide(index);
                       }}
-                      className="text-muted-foreground hover:text-destructive"
+                      className="rounded-md p-1 text-muted-foreground transition-colors duration-normal ease-ios-out hover:text-destructive hover:bg-muted/50"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -671,87 +684,96 @@ const EditCarousel = () => {
           </Card>
 
           {/* Main content area */}
-          <div className="flex-1 flex flex-col gap-3 min-w-0 order-1">
-            {/* LinkedIn-style carousel preview */}
-            <div className="flex-shrink-0">
-              <div id={`slide-preview-${selectedSlideIndex}`} className="w-full flex flex-col items-center gap-3">
-                <LinkedInCarouselPreview
-                  slides={slides}
-                  template={template}
-                  coverStyle={coverStyle}
-                  backgroundColor={backgroundColor}
-                  textColor={textColor}
-                  aspectRatio={aspectRatio}
-                  accentColor={accentColor}
-                  editingSlideIndex={editingSlideIndex}
-                  onEditStart={(slideIndex) => {
-                    setSelectedSlideIndex(slideIndex);
-                    setEditingSlideIndex(slideIndex);
-                  }}
-                  onEditEnd={() => {}} // Don't disable editing when clicking away
-                  onUpdateSlide={(slideIndex, updates) => {
-                    handleUpdateSlide(slideIndex, updates);
-                  }}
-                />
+          <div className="flex-1 flex flex-col gap-4 min-w-0 order-1">
+            <div className="flex-1 rounded-2xl border border-border/60 bg-background/60 backdrop-blur-xl shadow-2xl overflow-auto">
+              <div className="p-5 md:p-6">
+                <div id={`slide-preview-${selectedSlideIndex}`} className="w-full flex flex-col items-center gap-4">
+                  <LinkedInCarouselPreview
+                    slides={slides}
+                    template={template}
+                    coverStyle={coverStyle}
+                    backgroundColor={backgroundColor}
+                    textColor={textColor}
+                    aspectRatio={aspectRatio}
+                    accentColor={accentColor}
+                    editingSlideIndex={editingSlideIndex}
+                    onEditStart={(slideIndex) => {
+                      setSelectedSlideIndex(slideIndex);
+                      setEditingSlideIndex(slideIndex);
+                    }}
+                    onEditEnd={() => {}} // Don't disable editing when clicking away
+                    onUpdateSlide={(slideIndex, updates) => {
+                      handleUpdateSlide(slideIndex, updates);
+                    }}
+                  />
 
-                {/* Editing controls toolbar below the preview */}
-                <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-                  <Select value={template} onValueChange={(value: "dark" | "light") => setTemplate(value)}>
-                    <SelectTrigger className="w-32" dir="ltr">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent align="end" dir="ltr">
-                      <SelectItem value="dark">Dark</SelectItem>
-                      <SelectItem value="light">Light</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={coverStyle} onValueChange={(value) => setCoverStyle(value as "minimalist" | "big_number" | "accent_block" | "gradient_overlay" | "geometric" | "bold_frame")}>
-                    <SelectTrigger className="w-40" dir="ltr">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent align="end" dir="ltr">
-                      <SelectItem value="minimalist">Minimalist</SelectItem>
-                      <SelectItem value="big_number">Big number</SelectItem>
-                      <SelectItem value="accent_block">Accent block</SelectItem>
-                      <SelectItem value="gradient_overlay">Gradient</SelectItem>
-                      <SelectItem value="geometric">Geometric</SelectItem>
-                      <SelectItem value="bold_frame">Bold frame</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <ColorPicker color={backgroundColor} setColor={setBackgroundColor} title="Background" />
-                  <ColorPicker color={textColor} setColor={setTextColor} title="Text" />
-                  <ColorPicker color={accentColor} setColor={setAccentColor} title="Accent" />
-                  <Select value={aspectRatio} onValueChange={(value: "1:1" | "4:5") => setAspectRatio(value)}>
-                    <SelectTrigger className="w-28" dir="ltr">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent align="end" dir="ltr">
-                      <SelectItem value="1:1">1:1</SelectItem>
-                      <SelectItem value="4:5">4:5</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button 
-                    onClick={handleSave} 
-                    variant="outline" 
-                    size="sm"
-                    disabled={isSaving}
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : 'Save'}
-                  </Button>
-                  <Button onClick={() => setExportModalOpen(true)} disabled={exporting} size="sm">
-                    Export
-                  </Button>
+                  <div className="w-full max-w-[780px] rounded-xl border border-border/60 bg-background/40 p-3 backdrop-blur-xl">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <Select value={template} onValueChange={(value: "dark" | "light") => setTemplate(value)}>
+                        <SelectTrigger className="w-32" dir="ltr">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent align="end" dir="ltr">
+                          <SelectItem value="dark">Dark</SelectItem>
+                          <SelectItem value="light">Light</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={coverStyle}
+                        onValueChange={(value) =>
+                          setCoverStyle(
+                            value as
+                              | "minimalist"
+                              | "big_number"
+                              | "accent_block"
+                              | "gradient_overlay"
+                              | "geometric"
+                              | "bold_frame",
+                          )
+                        }
+                      >
+                        <SelectTrigger className="w-40" dir="ltr">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent align="end" dir="ltr">
+                          <SelectItem value="minimalist">Minimalist</SelectItem>
+                          <SelectItem value="big_number">Big number</SelectItem>
+                          <SelectItem value="accent_block">Accent block</SelectItem>
+                          <SelectItem value="gradient_overlay">Gradient</SelectItem>
+                          <SelectItem value="geometric">Geometric</SelectItem>
+                          <SelectItem value="bold_frame">Bold frame</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <ColorPicker color={backgroundColor} setColor={setBackgroundColor} title="Background" />
+                      <ColorPicker color={textColor} setColor={setTextColor} title="Text" />
+                      <ColorPicker color={accentColor} setColor={setAccentColor} title="Accent" />
+                      <Select value={aspectRatio} onValueChange={(value: "1:1" | "4:5") => setAspectRatio(value)}>
+                        <SelectTrigger className="w-28" dir="ltr">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent align="end" dir="ltr">
+                          <SelectItem value="1:1">1:1</SelectItem>
+                          <SelectItem value="4:5">4:5</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={handleSave} variant="outline" size="sm" disabled={isSaving}>
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          'Save'
+                        )}
+                      </Button>
+                      <Button onClick={() => setExportModalOpen(true)} disabled={exporting} size="sm">
+                        Export
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Spacer under controls */}
-            <div className="h-4"></div>
           </div>
         </div>
       </div>
@@ -769,7 +791,7 @@ const EditCarousel = () => {
       {/* Export Loading Overlay */}
       {exporting && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-          <Card className="p-8 text-center">
+          <Card className="p-8 text-center bg-background/60 backdrop-blur-xl border-border/60 shadow-2xl rounded-2xl">
             <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
             <p className="text-lg font-semibold">Exporting...</p>
             <p className="text-sm text-muted-foreground mt-2">This may take a few seconds</p>

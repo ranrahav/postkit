@@ -136,7 +136,7 @@ const ColorPicker = ({ color, setColor, title, disabled = false, showLabel = tru
       {colors.map((c) => (
         <button
           key={c}
-          className="h-6 w-6 rounded border hover:scale-110 transition-transform"
+          className="h-6 w-6 rounded-md border transition-transform duration-normal ease-ios-out hover:scale-105"
           style={{ backgroundColor: c }}
           onClick={() => handleColorSelect(c)}
         />
@@ -166,25 +166,41 @@ const ColorPicker = ({ color, setColor, title, disabled = false, showLabel = tru
         {/* Tabs */}
         <div className="flex border-b">
           <button
-            className={`flex-1 px-3 py-2 text-xs font-medium ${activeTab === 'theme' ? 'bg-slate-100 border-b-2 border-blue-500' : 'hover:bg-slate-50'}`}
+            className={`flex-1 px-3 py-2 text-xs font-medium transition-colors duration-normal ease-ios-out ${
+              activeTab === 'theme'
+                ? 'bg-muted/60 border-b-2 border-primary text-foreground'
+                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+            }`}
             onClick={() => setActiveTab('theme')}
           >
             Theme
           </button>
           <button
-            className={`flex-1 px-3 py-2 text-xs font-medium ${activeTab === 'standard' ? 'bg-slate-100 border-b-2 border-blue-500' : 'hover:bg-slate-50'}`}
+            className={`flex-1 px-3 py-2 text-xs font-medium transition-colors duration-normal ease-ios-out ${
+              activeTab === 'standard'
+                ? 'bg-muted/60 border-b-2 border-primary text-foreground'
+                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+            }`}
             onClick={() => setActiveTab('standard')}
           >
             Standard
           </button>
           <button
-            className={`flex-1 px-3 py-2 text-xs font-medium ${activeTab === 'custom' ? 'bg-slate-100 border-b-2 border-blue-500' : 'hover:bg-slate-50'}`}
+            className={`flex-1 px-3 py-2 text-xs font-medium transition-colors duration-normal ease-ios-out ${
+              activeTab === 'custom'
+                ? 'bg-muted/60 border-b-2 border-primary text-foreground'
+                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+            }`}
             onClick={() => setActiveTab('custom')}
           >
             Custom
           </button>
           <button
-            className={`flex-1 px-3 py-2 text-xs font-medium ${activeTab === 'recent' ? 'bg-slate-100 border-b-2 border-blue-500' : 'hover:bg-slate-50'}`}
+            className={`flex-1 px-3 py-2 text-xs font-medium transition-colors duration-normal ease-ios-out ${
+              activeTab === 'recent'
+                ? 'bg-muted/60 border-b-2 border-primary text-foreground'
+                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+            }`}
             onClick={() => setActiveTab('recent')}
           >
             Recent
@@ -215,7 +231,7 @@ const ColorPicker = ({ color, setColor, title, disabled = false, showLabel = tru
               {recentColors.length > 0 ? (
                 renderColorGrid(recentColors)
               ) : (
-                <div className="text-xs text-slate-500 text-center py-4">
+                <div className="text-xs text-muted-foreground text-center py-4">
                   No recent colors yet
                 </div>
               )}
@@ -228,7 +244,7 @@ const ColorPicker = ({ color, setColor, title, disabled = false, showLabel = tru
                 ref={canvasRef}
                 width={240}
                 height={120}
-                className="w-full border rounded cursor-crosshair"
+                className="w-full border rounded-md cursor-crosshair"
                 onClick={handleSpectrumClick}
               />
               
@@ -243,7 +259,7 @@ const ColorPicker = ({ color, setColor, title, disabled = false, showLabel = tru
                   Eyedropper
                 </Button>
                 
-                <div className="flex items-center gap-1 text-xs text-slate-600">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <div
                     className="h-4 w-4 rounded border"
                     style={{ backgroundColor: color }}

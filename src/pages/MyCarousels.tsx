@@ -237,15 +237,20 @@ const MyCarousels = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div dir="ltr" className="min-h-screen bg-gradient-to-b from-background to-muted">
-      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+    <div dir="ltr" className="relative min-h-screen overflow-hidden bg-gradient-to-b from-background to-muted">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-28 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
+        <div className="absolute -bottom-32 right-10 h-[28rem] w-[28rem] rounded-full bg-accent/20 blur-3xl" />
+      </div>
+
+      <header className="border-b border-border/60 bg-background/70 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold bg-gradient-to-l from-accent to-primary bg-clip-text text-transparent">
             SlideMint
@@ -262,11 +267,11 @@ const MyCarousels = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-10">
         <div className="max-w-5xl mx-auto space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-3xl font-bold">My carousels</h2>
+              <h2 className="text-4xl font-bold tracking-tight">My carousels</h2>
               <p className="text-muted-foreground mt-1">
                 {carousels.length} carousels
                 {profile && ` • ${profile.carousel_count}/10 created`}
@@ -275,18 +280,21 @@ const MyCarousels = () => {
           </div>
 
           {profile && profile.carousel_count >= 8 && (
-            <Card className="p-4 bg-accent/5 border-accent">
-              <p className="text-sm">
+            <Card className="p-4 bg-background/60 backdrop-blur-xl border-border/60 shadow-lg">
+              <p className="text-sm text-foreground">
                 You're close to the free limit ({profile.carousel_count}/10). We'll add a Pro plan soon.
               </p>
             </Card>
           )}
 
           {carousels.length === 0 ? (
-            <Card className="p-12 text-center">
+            <Card className="p-12 text-center bg-background/60 backdrop-blur-xl border-border/60 shadow-2xl rounded-2xl">
               <div className="space-y-4">
-                <h3 className="text-xl font-semibold">You haven't created any carousels yet</h3>
-                <p className="text-muted-foreground">Start by creating your first carousel</p>
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-xl ring-1 ring-border/50">
+                  <Plus className="h-7 w-7 text-primary-foreground" />
+                </div>
+                <h3 className="text-2xl font-semibold tracking-tight">You haven't created any carousels yet</h3>
+                <p className="text-muted-foreground">Start by creating your first carousel.</p>
                 <Button onClick={() => navigate("/create")}> 
                   <Plus className="ml-2 h-4 w-4" />
                   Create a new carousel
@@ -294,35 +302,76 @@ const MyCarousels = () => {
               </div>
             </Card>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {carousels.map((carousel) => {
                 const firstSlide = carousel.slides[0];
                 return (
-                  <Card key={carousel.id} className="p-6 hover:shadow-lg transition-shadow">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold truncate mb-1">
-                          {firstSlide?.title || "Untitled"}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {carousel.slides.length} slides •{" "}
-                          {carousel.chosen_template === "dark" ? "Dark template" : "Light template"} •{" "}
-                          Created{" "}
-                          {formatDistanceToNow(new Date(carousel.created_at), {
-                            addSuffix: true,
-                          })}
-                        </p>
+                  <Card
+                    key={carousel.id}
+                    className="group overflow-hidden border-border/60 bg-background/60 backdrop-blur-xl shadow-sm transition-all duration-normal ease-ios-out motion-safe:hover:-translate-y-0.5 hover:shadow-xl"
+                  >
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="text-base font-semibold leading-snug truncate">
+                            {firstSlide?.title || "Untitled"}
+                          </h3>
+                          {firstSlide?.body && (
+                            <p className="mt-1 text-xs text-muted-foreground truncate">
+                              {firstSlide.body}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-9 w-9 bg-background/30 hover:bg-muted/50"
+                            onClick={() => navigate(`/edit/${carousel.id}`)}
+                            aria-label="Edit carousel"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-9 w-9 bg-background/30 hover:bg-muted/50"
+                            onClick={() => handleExport(carousel)}
+                            aria-label="Export carousel"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-9 w-9 bg-background/30 hover:bg-muted/50"
+                            onClick={() => handleDelete(carousel.id)}
+                            aria-label="Delete carousel"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/edit/${carousel.id}`)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleExport(carousel)}>
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDelete(carousel.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <div className="inline-flex items-center rounded-full border border-border/60 bg-background/30 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                          {carousel.slides.length} slides
+                        </div>
+                        <div className="inline-flex items-center rounded-full border border-border/60 bg-background/30 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                          {carousel.chosen_template === "dark" ? "Dark" : "Light"} template
+                        </div>
+                        {carousel.aspect_ratio && (
+                          <div className="inline-flex items-center rounded-full border border-border/60 bg-background/30 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                            {carousel.aspect_ratio}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 text-xs text-muted-foreground">
+                        Created{" "}
+                        {formatDistanceToNow(new Date(carousel.created_at), {
+                          addSuffix: true,
+                        })}
                       </div>
                     </div>
                   </Card>
