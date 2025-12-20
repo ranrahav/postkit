@@ -83,7 +83,8 @@ const Landing = () => {
             
             <p className="text-4xl md:text-5xl text-muted-foreground mb-16 font-light leading-relaxed">
               It is recommended to <span className="font-semibold text-foreground">post 2 to 4 times a week</span><br />
-              you better <span className="font-semibold text-foreground">do it right</span>
+              <br />
+              You better <span className="font-semibold text-foreground">do it right</span>
             </p>
 
             {/* Single CTA Button */}
