@@ -1809,7 +1809,20 @@ const handleCreateCarousel = async () => {
   return (
     <div dir="rtl" className="relative min-h-screen overflow-hidden bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between h-[53px]">
-        <div className="flex items-center justify-between px-6 py-2">
+        {/* Left side - Sign out at extreme edge */}
+        <Button 
+          variant="ghost" 
+          onClick={handleSignOut}
+          className="h-9 px-4 rounded-lg text-sm font-medium text-muted-foreground/80 hover:text-foreground hover:bg-background/60 transition-all duration-300 ease-out border border-border/30 hover:border-border/50 shadow-sm"
+        > 
+          Sign Out
+        </Button>
+        
+        {/* Center - Empty space for gap + feed */}
+        <div className="flex-1"></div>
+        
+        {/* Right side - Logo positioned above Posts title */}
+        <div className="w-[280px] flex-shrink-0 flex items-center gap-3 justify-end">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 ring-1 ring-border/30 backdrop-blur-sm">
               <Palette className="h-5 w-5 text-white/95" />
@@ -1820,13 +1833,6 @@ const handleCreateCarousel = async () => {
               </h1>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            onClick={handleSignOut}
-            className="h-9 px-4 rounded-lg text-sm font-medium text-muted-foreground/80 hover:text-foreground hover:bg-background/60 transition-all duration-300 ease-out border border-border/30 hover:border-border/50 shadow-sm"
-          > 
-            Sign Out
-          </Button>
         </div>
       </header>
 
