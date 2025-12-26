@@ -6,13 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Plus, Search, Download, Edit, Copy, X, ChevronLeft, ChevronRight, Palette, GripVertical, MoreVertical } from "lucide-react";
+import { Loader2, Trash, Trash2, Plus, Search, Download, Edit, Copy, X, ChevronLeft, ChevronRight, Palette, GripVertical, MoreVertical } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { debounce } from "lodash";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import SlidePreview from "@/components/SlidePreview";
 import ColorPicker from "@/components/ui/color-picker";
@@ -1807,13 +1807,8 @@ const handleCreateCarousel = async () => {
   }
 
   return (
-    <div dir="rtl" className="relative min-h-screen overflow-hidden bg-gradient-to-b from-background to-muted">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-28 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
-        <div className="absolute -bottom-32 right-10 h-[28rem] w-[28rem] rounded-full bg-accent/20 blur-3xl" />
-      </div>
-      {/* Header */}
-      <header dir="ltr" className="border-b border-border/40 bg-background/80 backdrop-blur-2xl sticky top-0 z-50 shadow-sm">
+    <div dir="rtl" className="relative min-h-screen overflow-hidden bg-gray-50">
+      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between h-[53px]">
         <div className="flex items-center justify-between px-6 py-2">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 ring-1 ring-border/30 backdrop-blur-sm">
@@ -1835,346 +1830,358 @@ const handleCreateCarousel = async () => {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-53px)] overflow-hidden">
-        {/* Main Content Area - Single Post View */}
-        <div className="flex-1 flex flex-col min-w-0 bg-gray-50 overflow-hidden">
-          {/* Preview Area */}
-          <div className="flex-1 overflow-auto scrollbar-thin">
-            {selectedCarousel ? (
-              <div className="max-w-2xl mx-auto py-8">
-                {/* Single Unified Post View - LinkedIn-style */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  {/* Minimal Post Header */}
-                  <div className="px-6 py-3 border-b border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                      <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                      <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                    </div>
-                  </div>
-                  
-                  {/* Post Text Section */}
-                  <div className="px-6 py-5">
-                    <div className="text-gray-900 leading-relaxed whitespace-pre-wrap text-base" style={{ textAlign: 'left', direction: 'ltr' }}>
-                      {(() => {
-                        const evolution = postTextEvolution[selectedCarousel.id] || { current: 'awareness', versions: {} };
-                        const postContent = evolution.versions[evolution.current] || selectedCarousel.post_content || "No post content available.";
-                        const isExpanded = expandedPosts.has(selectedCarousel.id);
+      <div className="flex h-[calc(100vh-53px)] overflow-hidden justify-center">
+        <div className="flex gap-4 max-w-7xl w-full px-6 justify-center">
+          {/* Main Content Area - Vertical Feed View */}
+          <div className="w-full max-w-2xl flex flex-col min-w-0 overflow-hidden">
+            {/* Preview Area - Vertical Feed */}
+            <div className="flex-1 overflow-auto scrollbar-hide py-4" id="posts-feed-container">
+              {filteredCarousels.length > 0 ? (
+                <div className="w-full space-y-4">
+                  {filteredCarousels.map((carousel) => {
+                    const isSelected = selectedCarousel?.id === carousel.id;
+                    return (
+                      <div 
+                        key={carousel.id}
+                        id={`post-${carousel.id}`}
+                        className={`transition-all duration-300 rounded-lg ${
+                          isSelected ? 'ring-1 ring-blue-400/30 shadow-lg shadow-blue-500/10 bg-blue-50/20' : ''
+                        }`}
+                        onClick={() => selectCarousel(carousel)}
+                      >
+                        {/* Single Unified Post View - LinkedIn-style */}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full cursor-pointer hover:shadow-md transition-shadow">
+                        {/* Text Evolution Controls - Top */}
+                        {carousel.post_content && carousel.post_content !== "No post content available." && (
+                          <div className="px-6 pt-4 pb-2">
+                            <div className="flex justify-center gap-2">
+                              <button 
+                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
+                                  (postTextEvolution[carousel.id]?.current || 'awareness') === 'storytelling' 
+                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
+                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
+                                }`}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!isEvolvingText) {
+                                    await handleTextEvolution(carousel.id, 'storytelling');
+                                  }
+                                }}
+                              >
+                                More
+                                {isEvolvingText && (postTextEvolution[carousel.id]?.current || 'awareness') === 'storytelling' && (
+                                  <div className="w-3 h-3 border border-gray-400/30 border-t-gray-600 rounded-full animate-spin ml-2 inline-block"></div>
+                                )}
+                              </button>
+                              <button 
+                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
+                                  (postTextEvolution[carousel.id]?.current || 'awareness') === 'awareness' 
+                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
+                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPostTextEvolution(prev => ({
+                                    ...prev,
+                                    [carousel.id]: {
+                                      current: 'awareness',
+                                      versions: prev[carousel.id]?.versions || {}
+                                    }
+                                  }));
+                                }}
+                              >
+                                Default
+                              </button>
+                              <button 
+                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
+                                  (postTextEvolution[carousel.id]?.current || 'awareness') === 'discussion' 
+                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
+                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
+                                }`}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!isEvolvingText) {
+                                    await handleTextEvolution(carousel.id, 'discussion');
+                                  }
+                                }}
+                              >
+                                Less
+                                {isEvolvingText && (postTextEvolution[carousel.id]?.current || 'awareness') === 'discussion' && (
+                                  <div className="w-3 h-3 border border-gray-400/30 border-t-gray-600 rounded-full animate-spin ml-2 inline-block"></div>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         
-                        if (!postContent || postContent === "No post content available.") {
-                          return postContent;
-                        }
+                        {/* Text Section */}
+                        <div className="px-6 py-5">
+                          <div className="text-gray-900 leading-relaxed whitespace-pre-wrap text-base" style={{ textAlign: 'left', direction: 'ltr' }}>
+                            {(() => {
+                              const evolution = postTextEvolution[carousel.id] || { current: 'awareness', versions: {} };
+                              const postContent = evolution.versions[evolution.current] || carousel.post_content || "No post content available.";
+                              const isExpanded = expandedPosts.has(carousel.id);
+                              
+                              if (postContent === "No post content available.") {
+                                return (
+                                  <>
+                                    <span className="text-gray-400">No post content available.</span>
+                                  </>
+                                );
+                              }
+                              
+                              const paragraphs = postContent.split('\n\n').filter(p => p.trim());
+                              
+                              if (paragraphs.length <= 2 || isExpanded) {
+                                return (
+                                  <>
+                                    {paragraphs.map((paragraph, index) => (
+                                      <span key={index}>
+                                        {paragraph}
+                                        {index < paragraphs.length - 1 && '\n\n'}
+                                      </span>
+                                    ))}
+                                  </>
+                                );
+                              } else {
+                                const visibleParagraphs = paragraphs.slice(0, 2);
+                                const hiddenParagraphs = paragraphs.slice(2);
+                                
+                                return (
+                                  <>
+                                    {visibleParagraphs.map((paragraph, index) => (
+                                      <span key={index}>
+                                        {paragraph}
+                                        {index < visibleParagraphs.length - 1 && '\n\n'}
+                                      </span>
+                                    ))}
+                                    <span 
+                                      className="text-gray-400 cursor-pointer hover:text-gray-600 inline-block"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setExpandedPosts(prev => new Set([...prev, carousel.id]));
+                                      }}
+                                    >
+                                      {' ...Show more'}
+                                    </span>
+                                  </>
+                                );
+                              }
+                            })()}
+                          </div>
+                        </div>
                         
-                        // Split into paragraphs by double newlines
-                        const paragraphs = postContent.split(/\n\s*\n/).filter(p => p.trim());
-                        
-                        if (paragraphs.length <= 2 || isExpanded) {
-                          return (
-                            <>
-                              {postContent}
-                              {paragraphs.length > 2 && !isExpanded && (
-                                <>
-                                  {'\n\n'}
-                                  <span 
-                                    className="text-gray-500 hover:text-gray-700 cursor-pointer text-sm"
+                        {/* Visual Section - Carousel with Navigation */}
+                        <div className="px-6 pb-6">
+                            <div className="flex justify-center items-center gap-3">
+                              {/* Right Arrow - Now on left side */}
+                              <div className="w-8 flex justify-center">
+                                {parseSlides(carousel.slides).length > 1 && selectedSlideIndex < parseSlides(carousel.slides).length - 1 && (
+                                  <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setExpandedPosts(prev => new Set([...prev, selectedCarousel.id]));
+                                      setSelectedSlideIndex(Math.min(parseSlides(carousel.slides).length - 1, selectedSlideIndex + 1));
                                     }}
+                                    className="bg-gray-100/80 hover:bg-gray-200/80 rounded-full p-1.5 transition-all duration-200 ease-out"
                                   >
-                                    Show more
-                                  </span>
-                                </>
-                              )}
-                            </>
-                          );
-                        }
-                        
-                        // Show first 2-3 paragraphs
-                        const visibleParagraphs = paragraphs.slice(0, 2);
-                        const visibleText = visibleParagraphs.join('\n\n');
-                        
-                        return (
-                          <>
-                            {visibleText}
-                            {'\n\n'}
-                            <span 
-                              className="text-gray-500 hover:text-gray-700 cursor-pointer text-sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedPosts(prev => new Set([...prev, selectedCarousel.id]));
-                              }}
-                            >
-                              Show more
-                            </span>
-                          </>
-                        );
-                      })()}
-                    </div>
-                    
-                    {/* Text Evolution Controls */}
-                    {selectedCarousel.post_content && selectedCarousel.post_content !== "No post content available." && (
-                      <div className="flex justify-between mt-4 px-2">
-                        <span 
-                          className={`text-xs cursor-pointer transition-colors px-2 py-1 rounded-md flex items-center gap-1 ${
-                            (postTextEvolution[selectedCarousel.id]?.current || 'awareness') === 'storytelling' 
-                              ? 'bg-gray-800 text-white font-medium' 
-                              : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
-                          }`}
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (!isEvolvingText) {
-                              await handleTextEvolution(selectedCarousel.id, 'storytelling');
-                            }
-                          }}
-                        >
-                          More
-                          {isEvolvingText && (postTextEvolution[selectedCarousel.id]?.current || 'awareness') === 'storytelling' && (
-                            <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin"></div>
-                          )}
-                        </span>
-                        <span 
-                          className={`text-xs cursor-pointer transition-colors px-2 py-1 rounded-md ${
-                            (postTextEvolution[selectedCarousel.id]?.current || 'awareness') === 'awareness' 
-                              ? 'bg-gray-800 text-white font-medium' 
-                              : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPostTextEvolution(prev => ({
-                              ...prev,
-                              [selectedCarousel.id]: {
-                                current: 'awareness',
-                                versions: prev[selectedCarousel.id]?.versions || {}
-                              }
-                            }));
-                          }}
-                        >
-                          Default
-                        </span>
-                        <span 
-                          className={`text-xs cursor-pointer transition-colors px-2 py-1 rounded-md flex items-center gap-1 ${
-                            (postTextEvolution[selectedCarousel.id]?.current || 'awareness') === 'discussion' 
-                              ? 'bg-gray-800 text-white font-medium' 
-                              : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
-                          }`}
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (!isEvolvingText) {
-                              await handleTextEvolution(selectedCarousel.id, 'discussion');
-                            }
-                          }}
-                        >
-                          Less
-                          {isEvolvingText && (postTextEvolution[selectedCarousel.id]?.current || 'awareness') === 'discussion' && (
-                            <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin"></div>
-                          )}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Visual Section - Carousel with Navigation */}
-                  <div className="px-6 pb-6">
-                    <div className="flex justify-center items-center gap-3">
-                      {/* Right Arrow - Now on left side */}
-                      <div className="w-8 flex justify-center">
-                        {parseSlides(selectedCarousel.slides).length > 1 && selectedSlideIndex < parseSlides(selectedCarousel.slides).length - 1 && (
-                          <button
-                            onClick={() => setSelectedSlideIndex(Math.min(parseSlides(selectedCarousel.slides).length - 1, selectedSlideIndex + 1))}
-                            className="bg-gray-100/80 hover:bg-gray-200/80 rounded-full p-1.5 transition-all duration-200 ease-out"
-                          >
-                            <ChevronRight className="w-4 h-4 text-gray-500" />
-                          </button>
-                        )}
-                      </div>
-                      
-                      {/* Visual Content */}
-                      <div className="w-full max-w-md relative">
-                        {(() => {
-                          const currentVisual = postVisualEvolution[selectedCarousel.id] || 'carousel';
-                          
-                          if (currentVisual === 'photo') {
-                            // Photo placeholder
-                            return (
-                              <div className="relative bg-gray-200 rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
-                                <div className="h-full flex items-center justify-center">
-                                  <div className="text-center">
-                                    <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2 flex items-center justify-center">
-                                      <span className="text-gray-500 text-2xl">📷</span>
-                                    </div>
-                                    <p className="text-gray-500 text-sm">Photo placeholder</p>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          } else if (currentVisual === 'video') {
-                            // Video placeholder
-                            return (
-                              <div className="relative bg-gray-200 rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
-                                <div className="h-full flex items-center justify-center">
-                                  <div className="text-center">
-                                    <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2 flex items-center justify-center">
-                                      <span className="text-gray-500 text-2xl">▶️</span>
-                                    </div>
-                                    <p className="text-gray-500 text-sm">Video placeholder</p>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          } else {
-                            // Default carousel
-                            return (
-                              <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
-                                {/* Show current slide */}
-                                {parseSlides(selectedCarousel.slides).length > 0 && (
-                                  <div className="h-full flex items-center justify-center p-8">
-                                    <div className="text-center" style={{ textAlign: 'left', direction: 'ltr' }}>
-                                      <h3 className="text-xl font-bold mb-4" style={{ 
-                                        color: '#FFFFFF',
-                                        backgroundColor: '#000000',
-                                        textAlign: 'left'
-                                      }}>
-                                        {parseSlides(selectedCarousel.slides)[selectedSlideIndex]?.title || "Untitled"}
-                                      </h3>
-                                      <p className="text-base leading-relaxed" style={{ 
-                                        color: '#FFFFFF',
-                                        backgroundColor: '#000000',
-                                        textAlign: 'left'
-                                      }}>
-                                        {parseSlides(selectedCarousel.slides)[selectedSlideIndex]?.body || ""}
-                                      </p>
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Slide Counter - Bottom Left */}
-                                {parseSlides(selectedCarousel.slides).length > 1 && (
-                                  <div className="absolute bottom-4 left-4 text-white/60 text-xs font-medium">
-                                    {selectedSlideIndex + 1}/{parseSlides(selectedCarousel.slides).length}
-                                  </div>
+                                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                                  </button>
                                 )}
                               </div>
-                            );
-                          }
-                        })()}
-                      </div>
-                      
-                      {/* Left Arrow - Now on right side */}
-                      <div className="w-8 flex justify-center">
-                        {parseSlides(selectedCarousel.slides).length > 1 && selectedSlideIndex > 0 && (
-                          <button
-                            onClick={() => setSelectedSlideIndex(Math.max(0, selectedSlideIndex - 1))}
-                            className="bg-gray-100/80 hover:bg-gray-200/80 rounded-full p-1.5 transition-all duration-200 ease-out"
-                          >
-                            <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
-                          </button>
-                        )}
+                              
+                              {/* Visual Content */}
+                              <div className="w-full max-w-md relative">
+                                {(() => {
+                                  const currentVisual = postVisualEvolution[carousel.id] || 'carousel';
+                                  
+                                  if (currentVisual === 'photo') {
+                                    // Photo placeholder
+                                    return (
+                                      <div className="relative bg-gray-200 rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
+                                        <div className="h-full flex items-center justify-center">
+                                          <div className="text-center">
+                                            <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2 flex items-center justify-center">
+                                              <span className="text-gray-500 text-2xl">📷</span>
+                                            </div>
+                                            <p className="text-gray-500 text-sm">Photo placeholder</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  } else if (currentVisual === 'video') {
+                                    // Video placeholder
+                                    return (
+                                      <div className="relative bg-gray-200 rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
+                                        <div className="h-full flex items-center justify-center">
+                                          <div className="text-center">
+                                            <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2 flex items-center justify-center">
+                                              <span className="text-gray-500 text-2xl">▶️</span>
+                                            </div>
+                                            <p className="text-gray-500 text-sm">Video placeholder</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  } else {
+                                    // Default carousel
+                                    return (
+                                      <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
+                                        {/* Show current slide */}
+                                        {parseSlides(carousel.slides).length > 0 && (
+                                          <div className="h-full flex items-center justify-center p-8">
+                                            <div className="text-center" style={{ textAlign: 'left', direction: 'ltr' }}>
+                                              <h3 className="text-xl font-bold mb-4" style={{ 
+                                                color: '#FFFFFF',
+                                                backgroundColor: '#000000',
+                                                textAlign: 'left'
+                                              }}>
+                                                {parseSlides(carousel.slides)[selectedSlideIndex]?.title || "Untitled"}
+                                              </h3>
+                                              <p className="text-base leading-relaxed" style={{ 
+                                                color: '#FFFFFF',
+                                                backgroundColor: '#000000',
+                                                textAlign: 'left'
+                                              }}>
+                                                {parseSlides(carousel.slides)[selectedSlideIndex]?.body || ""}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Slide Counter - Bottom Left */}
+                                        {parseSlides(carousel.slides).length > 1 && (
+                                          <div className="absolute bottom-4 left-4 text-white/60 text-xs font-medium">
+                                            {selectedSlideIndex + 1}/{parseSlides(carousel.slides).length}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+                                })()}
+                              </div>
+                              
+                              {/* Left Arrow - Now on right side */}
+                              <div className="w-8 flex justify-center">
+                                {parseSlides(carousel.slides).length > 1 && selectedSlideIndex > 0 && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedSlideIndex(Math.max(0, selectedSlideIndex - 1));
+                                    }}
+                                    className="bg-gray-100/80 hover:bg-gray-200/80 rounded-full p-1.5 transition-all duration-200 ease-out"
+                                  >
+                                    <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Visual Evolution Controls - iOS6 Glass Effect */}
+                            <div className="flex justify-center gap-2 mt-4">
+                              <button 
+                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
+                                  (postVisualEvolution[carousel.id] || 'carousel') === 'video' 
+                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
+                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPostVisualEvolution(prev => ({
+                                    ...prev,
+                                    [carousel.id]: 'video'
+                                  }));
+                                }}
+                              >
+                                Video
+                              </button>
+                              <button 
+                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
+                                  (postVisualEvolution[carousel.id] || 'carousel') === 'carousel' 
+                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
+                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPostVisualEvolution(prev => {
+                                    const newState = { ...prev };
+                                    delete newState[carousel.id];
+                                    return newState;
+                                  });
+                                }}
+                              >
+                                Carousel
+                              </button>
+                              <button 
+                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
+                                  (postVisualEvolution[carousel.id] || 'carousel') === 'photo' 
+                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
+                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPostVisualEvolution(prev => ({
+                                    ...prev,
+                                    [carousel.id]: 'photo'
+                                  }));
+                                }}
+                              >
+                                Photo
+                              </button>
+                            </div>
+                        </div>
                       </div>
                     </div>
-                    
-                    {/* Visual Evolution Controls */}
-                    <div className="flex justify-between mt-4 px-2">
-                      <span 
-                        className={`text-xs cursor-pointer transition-colors px-2 py-1 rounded-md ${
-                          (postVisualEvolution[selectedCarousel.id] || 'carousel') === 'video' 
-                            ? 'bg-gray-800 text-white font-medium' 
-                            : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPostVisualEvolution(prev => ({
-                            ...prev,
-                            [selectedCarousel.id]: 'video'
-                          }));
-                        }}
-                      >
-                        Video
-                      </span>
-                      <span 
-                        className={`text-xs cursor-pointer transition-colors px-2 py-1 rounded-md ${
-                          (postVisualEvolution[selectedCarousel.id] || 'carousel') === 'carousel' 
-                            ? 'bg-gray-800 text-white font-medium' 
-                            : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPostVisualEvolution(prev => {
-                            const newState = { ...prev };
-                            delete newState[selectedCarousel.id];
-                            return newState;
-                          });
-                        }}
-                      >
-                        Carousel
-                      </span>
-                      <span 
-                        className={`text-xs cursor-pointer transition-colors px-2 py-1 rounded-md ${
-                          (postVisualEvolution[selectedCarousel.id] || 'carousel') === 'photo' 
-                            ? 'bg-gray-800 text-white font-medium' 
-                            : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPostVisualEvolution(prev => ({
-                            ...prev,
-                            [selectedCarousel.id]: 'photo'
-                          }));
-                        }}
-                      >
-                        Photo
-                      </span>
-                    </div>
+                  );
+                  })}
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center space-y-4">
+                    <h3 className="text-xl font-semibold">No posts yet</h3>
+                    <p className="text-muted-foreground">
+                      Create your first post to get started
+                    </p>
+                    <Button onClick={() => setCreateModalOpen(true)}>
+                      <Plus className="ml-2 h-4 w-4" />
+                      New Post
+                    </Button>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center space-y-4">
-                  <h3 className="text-xl font-semibold">Select a carousel to edit</h3>
-                  <p className="text-muted-foreground">
-                    Choose a carousel from the list or create a new one to get started
-                  </p>
-                  <Button onClick={() => setCreateModalOpen(true)}>
-                    <Plus className="ml-2 h-4 w-4" />
-                    New Post
-                  </Button>
+              )}
+            </div>
+          </div>
+
+        {/* Posts Panel - Aligned with Post Height */}
+          <div dir="ltr" className="w-[280px] flex-shrink-0 overflow-hidden">
+            <div className="h-full flex flex-col py-4">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col h-full">
+                <div className="p-4 border-b border-gray-100 text-left">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Posts</h2>
+                  <span className="text-sm text-gray-500 font-medium">
+                    {profile?.carousel_count || 0}/10
+                  </span>
                 </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search Post"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-10 rounded-lg border-gray-200 bg-gray-50 focus:bg-white focus:border-gray-300 transition-all duration-200 text-sm"
+                  />
+                </div>
+                <Button
+                  onClick={() => setCreateModalOpen(true)}
+                  className="w-full mt-3 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200 font-medium text-sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Post
+                </Button>
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* Right Panel - Carousel List */}
-        <div dir="ltr" className="w-[320px] flex-shrink-0 border-l border-border/20 bg-[#F3F4F6]/95 backdrop-blur-md flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-border/30 bg-[#F3F4F6]/60 backdrop-blur-sm text-left" dir="ltr">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#111827]/90">Posts</h2>
-              <span className="text-sm text-[#6B7280]/70 font-medium">
-                {profile?.carousel_count || 0}/10
-              </span>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-              <Input
-                placeholder="Search Post"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10 rounded-xl border-border/40 bg-background/60 backdrop-blur-sm focus:bg-background/80 focus:border-primary/50 transition-all duration-300 ease-out text-sm"
-              />
-            </div>
-            <Button
-              onClick={() => setCreateModalOpen(true)}
-              className="w-full mt-3 h-11 rounded-xl bg-primary/90 hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 ease-out font-medium text-sm"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Post
-            </Button>
-          </div>
-
-          
-          {/* Carousel List */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
+              {/* Carousel List */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
             {filteredCarousels.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">No carousels found</p>
@@ -2195,12 +2202,21 @@ const handleCreateCarousel = async () => {
                 return (
                   <div
                     key={carousel.id}
-                    className={`relative group cursor-pointer transition-all duration-normal ease-ios-out ${
+                    className={`relative group cursor-pointer transition-all duration-200 ${
                       selectedCarousel?.id === carousel.id 
-                        ? 'ring-2 ring-primary/50 bg-primary/5' 
-                        : 'hover:bg-background/60'
-                    } rounded-xl p-3 border border-border/40`}
-                    onClick={() => selectCarousel(carousel)}
+                        ? 'ring-2 ring-blue-500 bg-blue-50' 
+                        : 'hover:bg-gray-50'
+                    } rounded-lg p-3 border border-gray-200`}
+                    onClick={() => {
+                      selectCarousel(carousel);
+                      // Scroll to the post in the feed
+                      setTimeout(() => {
+                        const postElement = document.getElementById(`post-${carousel.id}`);
+                        if (postElement) {
+                          postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 100);
+                    }}
                     draggable
                     onDragStart={(e) => handleCarouselDragStart(e, index)}
                     onDragOver={(e) => handleCarouselDragOver(e, index)}
@@ -2298,6 +2314,9 @@ const handleCreateCarousel = async () => {
                 );
               })
             )}
+          </div>
+            </div>
+          </div>
           </div>
         </div>
       </div>
