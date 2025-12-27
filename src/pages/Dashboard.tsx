@@ -1842,6 +1842,42 @@ const handleCreateCarousel = async () => {
           <div className="w-full max-w-2xl flex flex-col min-w-0 overflow-hidden">
             {/* Preview Area - Vertical Feed */}
             <div className="flex-1 overflow-auto scrollbar-hide py-4" id="posts-feed-container">
+              {/* Compact New Post Input at Top of Feed */}
+              <div className="mb-4">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="Start here with an idea or a full post, we will generate the post and the visuals"
+                      value={newCarouselText}
+                      onChange={(e) => setNewCarouselText(e.target.value)}
+                      className="border-gray-200 bg-gray-50 focus:bg-white focus:border-gray-300 transition-all duration-200 text-sm resize-none min-h-[40px] max-h-[200px] overflow-hidden"
+                      style={{ direction: 'ltr' }}
+                      disabled={creatingCarousel}
+                      rows={1}
+                      onInput={(e) => {
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = 'auto';
+                        target.style.height = `${target.scrollHeight}px`;
+                      }}
+                    />
+                    <Button
+                      onClick={handleCreateCarousel}
+                      disabled={creatingCarousel || !newCarouselText.trim()}
+                      className="w-full h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200 font-medium text-sm"
+                    >
+                      {creatingCarousel ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {creatingCarouselPhase}
+                        </>
+                      ) : (
+                        "Turn this into a full post"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
               {filteredCarousels.length > 0 ? (
                 <div className="w-full space-y-4">
                   {filteredCarousels.map((carousel) => {
@@ -1857,69 +1893,7 @@ const handleCreateCarousel = async () => {
                       >
                         {/* Single Unified Post View - LinkedIn-style */}
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full cursor-pointer hover:shadow-md transition-shadow">
-                        {/* Text Evolution Controls - Top */}
-                        {carousel.post_content && carousel.post_content !== "No post content available." && (
-                          <div className="px-6 pt-4 pb-2">
-                            <div className="flex justify-center gap-2">
-                              <button 
-                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
-                                  (postTextEvolution[carousel.id]?.current || 'awareness') === 'storytelling' 
-                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
-                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
-                                }`}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (!isEvolvingText) {
-                                    await handleTextEvolution(carousel.id, 'storytelling');
-                                  }
-                                }}
-                              >
-                                More
-                                {isEvolvingText && (postTextEvolution[carousel.id]?.current || 'awareness') === 'storytelling' && (
-                                  <div className="w-3 h-3 border border-gray-400/30 border-t-gray-600 rounded-full animate-spin ml-2 inline-block"></div>
-                                )}
-                              </button>
-                              <button 
-                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
-                                  (postTextEvolution[carousel.id]?.current || 'awareness') === 'awareness' 
-                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
-                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPostTextEvolution(prev => ({
-                                    ...prev,
-                                    [carousel.id]: {
-                                      current: 'awareness',
-                                      versions: prev[carousel.id]?.versions || {}
-                                    }
-                                  }));
-                                }}
-                              >
-                                Default
-                              </button>
-                              <button 
-                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
-                                  (postTextEvolution[carousel.id]?.current || 'awareness') === 'discussion' 
-                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
-                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
-                                }`}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (!isEvolvingText) {
-                                    await handleTextEvolution(carousel.id, 'discussion');
-                                  }
-                                }}
-                              >
-                                Less
-                                {isEvolvingText && (postTextEvolution[carousel.id]?.current || 'awareness') === 'discussion' && (
-                                  <div className="w-3 h-3 border border-gray-400/30 border-t-gray-600 rounded-full animate-spin ml-2 inline-block"></div>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                        
+                                                
                         {/* Text Section */}
                         <div className="px-6 py-5">
                           <div className="text-gray-900 leading-relaxed whitespace-pre-wrap text-base" style={{ textAlign: 'left', direction: 'ltr' }}>
@@ -1976,6 +1950,60 @@ const handleCreateCarousel = async () => {
                             })()}
                           </div>
                         </div>
+                        
+                        {/* Text Directional Hints - Only for selected post */}
+                        {isSelected && carousel.post_content && carousel.post_content !== "No post content available." && (
+                          <div className="px-6 pb-3">
+                            <div className="flex justify-between items-center text-xs text-gray-400">
+                              <div 
+                                className="cursor-pointer hover:text-gray-600 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const current = postTextEvolution[carousel.id]?.current || 'awareness';
+                                  if (current === 'discussion') {
+                                    setPostTextEvolution(prev => ({
+                                      ...prev,
+                                      [carousel.id]: {
+                                        current: 'awareness',
+                                        versions: prev[carousel.id]?.versions || {}
+                                      }
+                                    }));
+                                  } else if (current === 'awareness') {
+                                    if (!isEvolvingText) {
+                                      handleTextEvolution(carousel.id, 'storytelling');
+                                    }
+                                  }
+                                }}
+                              >
+                                {(postTextEvolution[carousel.id]?.current || 'awareness') === 'awareness' || 
+                                 (postTextEvolution[carousel.id]?.current || 'awareness') === 'discussion' ? 'Longer post →' : ''}
+                              </div>
+                              <div 
+                                className="cursor-pointer hover:text-gray-600 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const current = postTextEvolution[carousel.id]?.current || 'awareness';
+                                  if (current === 'storytelling') {
+                                    setPostTextEvolution(prev => ({
+                                      ...prev,
+                                      [carousel.id]: {
+                                        current: 'awareness',
+                                        versions: prev[carousel.id]?.versions || {}
+                                      }
+                                    }));
+                                  } else if (current === 'awareness') {
+                                    if (!isEvolvingText) {
+                                      handleTextEvolution(carousel.id, 'discussion');
+                                    }
+                                  }
+                                }}
+                              >
+                                {(postTextEvolution[carousel.id]?.current || 'awareness') === 'awareness' || 
+                                 (postTextEvolution[carousel.id]?.current || 'awareness') === 'storytelling' ? '← Shorter post' : ''}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         
                         {/* Visual Section - Carousel with Navigation */}
                         <div className="px-6 pb-6">
@@ -2147,10 +2175,6 @@ const handleCreateCarousel = async () => {
                     <p className="text-muted-foreground">
                       Create your first post to get started
                     </p>
-                    <Button onClick={() => setCreateModalOpen(true)}>
-                      <Plus className="ml-2 h-4 w-4" />
-                      New Post
-                    </Button>
                   </div>
                 </div>
               )}
@@ -2177,28 +2201,13 @@ const handleCreateCarousel = async () => {
                     className="pl-10 h-10 rounded-lg border-gray-200 bg-gray-50 focus:bg-white focus:border-gray-300 transition-all duration-200 text-sm"
                   />
                 </div>
-                <Button
-                  onClick={() => setCreateModalOpen(true)}
-                  className="w-full mt-3 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200 font-medium text-sm"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Post
-                </Button>
               </div>
 
               {/* Carousel List */}
               <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
             {filteredCarousels.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">No carousels found</p>
-                <Button
-                  onClick={() => setCreateModalOpen(true)}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Plus className="ml-2 h-4 w-4" />
-                  Create First Post
-                </Button>
+                <p className="text-muted-foreground">No carousels found</p>
               </div>
             ) : (
               filteredCarousels.map((carousel, index) => {
