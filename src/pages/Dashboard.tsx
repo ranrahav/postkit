@@ -2153,11 +2153,10 @@ const handleCreateCarousel = async () => {
                                 }`}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setPostVisualEvolution(prev => {
-                                    const newState = { ...prev };
-                                    delete newState[carousel.id];
-                                    return newState;
-                                  });
+                                  setPostVisualEvolution(prev => ({
+                                    ...prev,
+                                    [carousel.id]: 'carousel'
+                                  }));
                                 }}
                               >
                                 Carousel
