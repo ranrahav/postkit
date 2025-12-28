@@ -814,35 +814,23 @@ const detectTopicType = (text: string): 'person' | 'concept' | 'general' => {
   return 'general';
 };
 
-// Function to generate concise post based on topic type
+// Function to generate concise post based on topic type (25-75 words)
 const generateConcisePost = (topic: string): string => {
   const topicType = detectTopicType(topic);
   const cleanTopic = topic.replace(/^(i want to know more about|tell me about|who is|about)\s+/i, '').trim();
   
   if (topicType === 'person') {
-    // Generate content about a person
-    return `Let's explore the remarkable journey of ${cleanTopic}. This individual has made significant contributions that have inspired and influenced many in their field.
-
-Their story demonstrates exceptional dedication, talent, and perseverance. Through various challenges and achievements, they've established themselves as a notable figure worth understanding and learning from.
-
-What aspects of ${cleanTopic}'s journey do you find most inspiring? I'd love to hear your thoughts and perspectives on their impact and legacy.`;
+    // Generate content about a person (25-75 words)
+    return `Let's explore the remarkable journey of ${cleanTopic}. This individual has made significant contributions that have inspired and influenced many in their field. Their story demonstrates exceptional dedication and perseverance. What aspects of ${cleanTopic}'s journey do you find most inspiring?`;
   }
   
   if (topicType === 'concept') {
-    // Generate content about a business concept
-    return `${cleanTopic} has become increasingly important in today's professional landscape. Understanding its core principles can transform how we approach modern challenges and opportunities.
-
-The key benefits include improved efficiency, strategic thinking, and better outcomes. Organizations and professionals who embrace these concepts often see measurable improvements in their performance and results.
-
-How have you encountered ${cleanTopic} in your work? Share your experiences and let's discuss practical applications together.`;
+    // Generate content about a business concept (25-75 words)
+    return `${cleanTopic} has become increasingly important in today's professional landscape. Understanding its core principles can transform how we approach modern challenges and opportunities. The key benefits include improved efficiency, strategic thinking, and better outcomes. How have you encountered ${cleanTopic} in your work?`;
   }
   
-  // Generate general content
-  return `Exploring ${cleanTopic} opens up fascinating possibilities for growth and learning. This topic offers valuable insights that can benefit both personal and professional development.
-
-The opportunity lies in understanding different perspectives and approaches. By diving deeper into this subject, we can discover new ways of thinking and innovative solutions to everyday challenges.
-
-What's your experience with ${cleanTopic}? I'm curious to hear your thoughts and learn from your unique perspective on this topic.`;
+  // Generate general content (25-75 words)
+  return `Exploring ${cleanTopic} opens up fascinating possibilities for growth and learning. This topic offers valuable insights that can benefit both personal and professional development. The opportunity lies in understanding different perspectives and approaches. What's your experience with ${cleanTopic}? I'm curious to hear your thoughts.`;
 };
 
 // Temporary frontend function to generate post content from topic/idea
@@ -958,11 +946,12 @@ const handleCreateCarousel = async () => {
       let processedText: string;
       
       if (wordCount < 25) {
-        // Short text: develop into a post of 75-150 words
+        // Short text: develop into a post of 25-75 words
         contentType = "topic_idea";
-        processedText = newCarouselText;
-        // Generate a concise post from the description (75-150 words)
+        // Generate a concise post from the description (25-75 words)
         finalPostContent = generateConcisePost(newCarouselText);
+        // Send the generated post to the API to create essence slides
+        processedText = finalPostContent;
       } else {
         // Long text: use as is and create essence slides
         contentType = "full_post";
@@ -1808,7 +1797,7 @@ const handleCreateCarousel = async () => {
 
   return (
     <div dir="rtl" className="relative min-h-screen overflow-hidden bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between h-[53px]">
+      <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-4 flex items-center justify-between h-[53px]">
         {/* Left side - Sign out at extreme edge */}
         <Button 
           variant="ghost" 
@@ -1818,11 +1807,23 @@ const handleCreateCarousel = async () => {
           Sign Out
         </Button>
         
-        {/* Center - Empty space for gap + feed */}
-        <div className="flex-1"></div>
+        {/* Center - Mobile title (hidden on desktop) */}
+        <div className="md:hidden flex items-center justify-center flex-1">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-lg shadow-primary/30">
+              <Palette className="h-4 w-4 text-white/95" />
+            </div>
+            <h1 className="text-lg font-bold tracking-tight text-primary">
+              Post24
+            </h1>
+          </div>
+        </div>
+        
+        {/* Center - Empty space for gap + feed (desktop only) */}
+        <div className="hidden md:flex flex-1"></div>
         
         {/* Right side - Logo positioned above Posts title */}
-        <div className="w-[280px] flex-shrink-0 flex items-center gap-3 justify-end">
+        <div className="hidden md:flex w-[280px] flex-shrink-0 items-center gap-3 justify-end">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 ring-1 ring-border/30 backdrop-blur-sm">
               <Palette className="h-5 w-5 text-white/95" />
@@ -1837,9 +1838,9 @@ const handleCreateCarousel = async () => {
       </header>
 
       <div className="flex h-[calc(100vh-53px)] overflow-hidden justify-center">
-        <div className="flex gap-4 max-w-7xl w-full px-6 justify-center">
+        <div className="flex gap-4 max-w-7xl w-full px-4 md:px-6 justify-center">
           {/* Main Content Area - Vertical Feed View */}
-          <div className="w-full max-w-2xl flex flex-col min-w-0 overflow-hidden">
+          <div className="w-full lg:max-w-2xl flex flex-col min-w-0 overflow-hidden">
             {/* Preview Area - Vertical Feed */}
             <div className="flex-1 overflow-auto scrollbar-hide py-4" id="posts-feed-container">
               {/* Compact New Post Input at Top of Feed */}
@@ -1847,7 +1848,7 @@ const handleCreateCarousel = async () => {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                   <div className="space-y-3">
                     <Textarea
-                      placeholder="Start here with an idea or a full post, we will generate the post and the visuals"
+                      placeholder="Start here with an idea or a post"
                       value={newCarouselText}
                       onChange={(e) => setNewCarouselText(e.target.value)}
                       className="border-gray-200 bg-gray-50 focus:bg-white focus:border-gray-300 transition-all duration-200 text-sm resize-none min-h-[40px] max-h-[200px] overflow-hidden"
@@ -1871,7 +1872,7 @@ const handleCreateCarousel = async () => {
                           {creatingCarouselPhase}
                         </>
                       ) : (
-                        "Turn this into a full post"
+                        "Hit Me"
                       )}
                     </Button>
                   </div>
@@ -2026,7 +2027,7 @@ const handleCreateCarousel = async () => {
                               {/* Visual Content */}
                               <div className="w-full max-w-md relative">
                                 {(() => {
-                                  const currentVisual = postVisualEvolution[carousel.id] || 'carousel';
+                                  const currentVisual = postVisualEvolution[carousel.id] || 'photo';
                                   
                                   if (currentVisual === 'photo') {
                                     // Photo placeholder
@@ -2114,7 +2115,7 @@ const handleCreateCarousel = async () => {
                             <div className="flex justify-center gap-2 mt-4">
                               <button 
                                 className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
-                                  (postVisualEvolution[carousel.id] || 'carousel') === 'video' 
+                                  (postVisualEvolution[carousel.id] || 'photo') === 'video' 
                                     ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
                                     : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
                                 }`}
@@ -2130,7 +2131,23 @@ const handleCreateCarousel = async () => {
                               </button>
                               <button 
                                 className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
-                                  (postVisualEvolution[carousel.id] || 'carousel') === 'carousel' 
+                                  (postVisualEvolution[carousel.id] || 'photo') === 'photo' 
+                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
+                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPostVisualEvolution(prev => ({
+                                    ...prev,
+                                    [carousel.id]: 'photo'
+                                  }));
+                                }}
+                              >
+                                Photo
+                              </button>
+                              <button 
+                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
+                                  (postVisualEvolution[carousel.id] || 'photo') === 'carousel' 
                                     ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
                                     : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
                                 }`}
@@ -2144,22 +2161,6 @@ const handleCreateCarousel = async () => {
                                 }}
                               >
                                 Carousel
-                              </button>
-                              <button 
-                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
-                                  (postVisualEvolution[carousel.id] || 'carousel') === 'photo' 
-                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
-                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPostVisualEvolution(prev => ({
-                                    ...prev,
-                                    [carousel.id]: 'photo'
-                                  }));
-                                }}
-                              >
-                                Photo
                               </button>
                             </div>
                         </div>
@@ -2182,7 +2183,7 @@ const handleCreateCarousel = async () => {
           </div>
 
         {/* Posts Panel - Aligned with Post Height */}
-          <div dir="ltr" className="w-[280px] flex-shrink-0 overflow-hidden">
+          <div dir="ltr" className="hidden lg:block w-[280px] flex-shrink-0 overflow-hidden">
             <div className="h-full flex flex-col py-4">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col h-full">
                 <div className="p-4 border-b border-gray-100 text-left">
