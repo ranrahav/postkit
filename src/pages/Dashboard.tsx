@@ -126,6 +126,49 @@ const Dashboard = () => {
   const [carousels, setCarousels] = useState<Carousel[]>([]);
   const [selectedCarousel, setSelectedCarousel] = useState<Carousel | null>(null);
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(0);
+  
+  // Independent indexing for each visual category
+  const [visualSlideIndexes, setVisualSlideIndexes] = useState<{[key: string]: {
+    carousel: number;
+    photo: number;
+    video: number;
+  }}>({});
+  
+  // Helper functions for independent visual indexing
+  const getVisualIndex = (carouselId: string, visualType: 'carousel' | 'photo' | 'video'): number => {
+    return visualSlideIndexes[carouselId]?.[visualType] || 0;
+  };
+  
+  const setVisualIndex = (carouselId: string, visualType: 'carousel' | 'photo' | 'video', index: number) => {
+    setVisualSlideIndexes(prev => ({
+      ...prev,
+      [carouselId]: {
+        ...prev[carouselId],
+        [visualType]: index
+      }
+    }));
+  };
+  
+  const getMaxIndex = (visualType: 'carousel' | 'photo' | 'video'): number => {
+    switch (visualType) {
+      case 'carousel':
+        return selectedCarousel ? Math.max(0, parseSlides(selectedCarousel.slides).length - 1) : 0;
+      case 'photo':
+        return 2; // Assuming 3 photos (0, 1, 2)
+      case 'video':
+        return 1; // Assuming 2 videos (0, 1)
+      default:
+        return 0;
+    }
+  };
+  
+  const navigateVisualSlide = (carouselId: string, visualType: 'carousel' | 'photo' | 'video', direction: number) => {
+    const currentIndex = getVisualIndex(carouselId, visualType);
+    const maxIndex = getMaxIndex(visualType);
+    const newIndex = Math.max(0, Math.min(currentIndex + direction, maxIndex));
+    setVisualIndex(carouselId, visualType, newIndex);
+  };
+  
   const [isNewUser, setIsNewUser] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -1948,16 +1991,16 @@ const handleCreateCarousel = async () => {
                                   </>
                                 );
                               }
-                            })()}
+                            })() as React.ReactNode}
                           </div>
                         </div>
                         
                         {/* Text Directional Hints - Only for selected post */}
                         {isSelected && carousel.post_content && carousel.post_content !== "No post content available." && (
                           <div className="px-6 pb-3">
-                            <div className="flex justify-between items-center text-xs text-gray-400">
+                            <div className="flex justify-between items-center text-sm font-medium">
                               <div 
-                                className="cursor-pointer hover:text-gray-600 transition-colors"
+                                className="cursor-pointer text-blue-500 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-1"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const current = postTextEvolution[carousel.id]?.current || 'awareness';
@@ -1980,7 +2023,7 @@ const handleCreateCarousel = async () => {
                                  (postTextEvolution[carousel.id]?.current || 'awareness') === 'discussion' ? 'Longer post →' : ''}
                               </div>
                               <div 
-                                className="cursor-pointer hover:text-gray-600 transition-colors"
+                                className="cursor-pointer text-blue-500 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-1"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const current = postTextEvolution[carousel.id]?.current || 'awareness';
@@ -2011,17 +2054,23 @@ const handleCreateCarousel = async () => {
                             <div className="flex justify-center items-center gap-3">
                               {/* Right Arrow - Now on left side */}
                               <div className="w-8 flex justify-center">
-                                {parseSlides(carousel.slides).length > 1 && selectedSlideIndex < parseSlides(carousel.slides).length - 1 && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedSlideIndex(Math.min(parseSlides(carousel.slides).length - 1, selectedSlideIndex + 1));
-                                    }}
-                                    className="bg-gray-100/80 hover:bg-gray-200/80 rounded-full p-1.5 transition-all duration-200 ease-out"
-                                  >
-                                    <ChevronRight className="w-4 h-4 text-gray-500" />
-                                  </button>
-                                )}
+                                {(() => {
+                                  const currentVisual = postVisualEvolution[carousel.id] || 'photo';
+                                  const currentIndex = getVisualIndex(carousel.id, currentVisual);
+                                  const maxIndex = getMaxIndex(currentVisual);
+                                  
+                                  return maxIndex > 0 && currentIndex < maxIndex && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigateVisualSlide(carousel.id, currentVisual, 1);
+                                      }}
+                                      className="bg-gray-100/80 hover:bg-gray-200/80 rounded-full p-1.5 transition-all duration-200 ease-out"
+                                    >
+                                      <ChevronRight className="w-4 h-4 text-gray-500" />
+                                    </button>
+                                  );
+                                })() as React.ReactNode}
                               </div>
                               
                               {/* Visual Content */}
@@ -2030,29 +2079,37 @@ const handleCreateCarousel = async () => {
                                   const currentVisual = postVisualEvolution[carousel.id] || 'photo';
                                   
                                   if (currentVisual === 'photo') {
-                                    // Photo placeholder
+                                    // Photo placeholder with index
+                                    const photoIndex = getVisualIndex(carousel.id, 'photo');
+                                    const photoLabels = ['Photo 1', 'Photo 2', 'Photo 3'];
+                                    const photoEmojis = ['🏞️', '🎨', '📸'];
+                                    
                                     return (
                                       <div className="relative bg-gray-200 rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
                                         <div className="h-full flex items-center justify-center">
                                           <div className="text-center">
                                             <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2 flex items-center justify-center">
-                                              <span className="text-gray-500 text-2xl">📷</span>
+                                              <span className="text-gray-500 text-2xl">{photoEmojis[photoIndex] || '📷'}</span>
                                             </div>
-                                            <p className="text-gray-500 text-sm">Photo placeholder</p>
+                                            <p className="text-gray-500 text-sm">{photoLabels[photoIndex] || 'Photo placeholder'}</p>
                                           </div>
                                         </div>
                                       </div>
                                     );
                                   } else if (currentVisual === 'video') {
-                                    // Video placeholder
+                                    // Video placeholder with index
+                                    const videoIndex = getVisualIndex(carousel.id, 'video');
+                                    const videoLabels = ['Video 1', 'Video 2'];
+                                    const videoEmojis = ['🎬', '🎥'];
+                                    
                                     return (
                                       <div className="relative bg-gray-200 rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
                                         <div className="h-full flex items-center justify-center">
                                           <div className="text-center">
                                             <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2 flex items-center justify-center">
-                                              <span className="text-gray-500 text-2xl">▶️</span>
+                                              <span className="text-gray-500 text-2xl">{videoEmojis[videoIndex] || '▶️'}</span>
                                             </div>
-                                            <p className="text-gray-500 text-sm">Video placeholder</p>
+                                            <p className="text-gray-500 text-sm">{videoLabels[videoIndex] || 'Video placeholder'}</p>
                                           </div>
                                         </div>
                                       </div>
@@ -2062,33 +2119,48 @@ const handleCreateCarousel = async () => {
                                     return (
                                       <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
                                         {/* Show current slide */}
-                                        {parseSlides(carousel.slides).length > 0 && (
-                                          <div className="h-full flex items-center justify-center p-8">
-                                            <div className="text-center" style={{ textAlign: 'left', direction: 'ltr' }}>
-                                              <h3 className="text-xl font-bold mb-4" style={{ 
-                                                color: '#FFFFFF',
-                                                backgroundColor: '#000000',
-                                                textAlign: 'left'
-                                              }}>
-                                                {parseSlides(carousel.slides)[selectedSlideIndex]?.title || "Untitled"}
-                                              </h3>
-                                              <p className="text-base leading-relaxed" style={{ 
-                                                color: '#FFFFFF',
-                                                backgroundColor: '#000000',
-                                                textAlign: 'left'
-                                              }}>
-                                                {parseSlides(carousel.slides)[selectedSlideIndex]?.body || ""}
-                                              </p>
-                                            </div>
-                                          </div>
-                                        )}
+                                        {(() => {
+                                  const currentVisual = postVisualEvolution[carousel.id] || 'photo';
+                                  const currentIndex = getVisualIndex(carousel.id, currentVisual);
+                                  
+                                  if (currentVisual === 'carousel' && parseSlides(carousel.slides).length > 0) {
+                                    return (
+                                      <div className="h-full flex items-center justify-center p-8">
+                                        <div className="text-center" style={{ textAlign: 'left', direction: 'ltr' }}>
+                                          <h3 className="text-xl font-bold mb-4" style={{ 
+                                            color: '#FFFFFF',
+                                            backgroundColor: '#000000',
+                                            textAlign: 'left'
+                                          }}>
+                                            {parseSlides(carousel.slides)[currentIndex]?.title || "Untitled"}
+                                          </h3>
+                                          <p className="text-base leading-relaxed" style={{ 
+                                            color: '#FFFFFF',
+                                            backgroundColor: '#000000',
+                                            textAlign: 'left'
+                                          }}>
+                                            {parseSlides(carousel.slides)[currentIndex]?.body || ""}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  return null;
+                                })() as React.ReactNode}
                                         
                                         {/* Slide Counter - Bottom Left */}
-                                        {parseSlides(carousel.slides).length > 1 && (
-                                          <div className="absolute bottom-4 left-4 text-white/60 text-xs font-medium">
-                                            {selectedSlideIndex + 1}/{parseSlides(carousel.slides).length}
-                                          </div>
-                                        )}
+                                        {(() => {
+                                          const currentVisual = postVisualEvolution[carousel.id] || 'photo';
+                                          const currentIndex = getVisualIndex(carousel.id, currentVisual);
+                                          const maxIndex = getMaxIndex(currentVisual);
+                                          
+                                          return maxIndex > 0 && (
+                                            <div className="absolute bottom-4 left-4 text-white/60 text-xs font-medium">
+                                              {currentIndex + 1}/{maxIndex + 1}
+                                            </div>
+                                          );
+                                        })() as React.ReactNode}
                                       </div>
                                     );
                                   }
@@ -2097,17 +2169,22 @@ const handleCreateCarousel = async () => {
                               
                               {/* Left Arrow - Now on right side */}
                               <div className="w-8 flex justify-center">
-                                {parseSlides(carousel.slides).length > 1 && selectedSlideIndex > 0 && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedSlideIndex(Math.max(0, selectedSlideIndex - 1));
-                                    }}
-                                    className="bg-gray-100/80 hover:bg-gray-200/80 rounded-full p-1.5 transition-all duration-200 ease-out"
-                                  >
-                                    <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
-                                  </button>
-                                )}
+                                {(() => {
+                                  const currentVisual = postVisualEvolution[carousel.id] || 'photo';
+                                  const currentIndex = getVisualIndex(carousel.id, currentVisual);
+                                  
+                                  return currentIndex > 0 && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigateVisualSlide(carousel.id, currentVisual, -1);
+                                      }}
+                                      className="bg-gray-100/80 hover:bg-gray-200/80 rounded-full p-1.5 transition-all duration-200 ease-out"
+                                    >
+                                      <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
+                                    </button>
+                                  );
+                                })() as React.ReactNode}
                               </div>
                             </div>
                             

@@ -115,20 +115,20 @@ async function generateSlidesWithOpenAI(text: string, style: string, language: s
     
     switch (content_purpose) {
       case 'awareness':
-        wordCountInstruction = '25-75 words total';
-        postDescription = 'short, concise awareness post';
+        wordCountInstruction = '120-180 words total';
+        postDescription = 'engaging B2B LinkedIn post';
         break;
       case 'thought_leadership':
-        wordCountInstruction = '100-300 words total';
-        postDescription = 'comprehensive thought leadership post';
+        wordCountInstruction = '120-180 words total';
+        postDescription = 'engaging B2B LinkedIn post';
         break;
       case 'opinion':
-        wordCountInstruction = 'under 20 words total';
-        postDescription = 'very short opinion or conversation starter';
+        wordCountInstruction = '120-180 words total';
+        postDescription = 'engaging B2B LinkedIn post';
         break;
       default:
-        wordCountInstruction = '100-300 words total';
-        postDescription = 'comprehensive thought leadership post';
+        wordCountInstruction = '120-180 words total';
+        postDescription = 'engaging B2B LinkedIn post';
     }
     
     prompt = `You are SlideMint, an AI model specialized in transforming topics and ideas into LinkedIn posts and carousel slides.
@@ -138,7 +138,19 @@ Given the following topic or idea (1-2 sentences), generate a ${postDescription}
 
 REQUIREMENTS  
 1. Output JSON only. No explanations.  
-2. First, write a complete LinkedIn post that is exactly ${wordCountInstruction}. The post should be elaborative and comprehensive.
+
+**POST GENERATION:**
+2. Write an engaging LinkedIn post about the following subject using these guidelines:
+   - Target a professional LinkedIn audience
+   - Start with a strong hook in the first 1–2 lines
+   - Keep the tone confident, insightful, and conversational
+   - Provide a clear takeaway or lesson
+   - Use short paragraphs for readability
+   - Avoid emojis and hashtags unless explicitly requested
+   - End with a thoughtful question or call to action to drive engagement
+   - Length: 120–180 words
+
+**SLIDE GENERATION:**
 3. Then create 6-8 essence slides that capture ONLY the key points - keep slide text very concise (1-2 short sentences per slide).
 4. Each slide must have:  
    - "index": number  
@@ -153,11 +165,11 @@ REQUIREMENTS
 7. First slide must introduce the main concept.  
 8. Last slide must include a call-to-action or key takeaway.
 
-CRITICAL: The post must be elaborative and detailed (${wordCountInstruction}), while the slides must contain ONLY the essence - very concise key points.
+CRITICAL: The post must follow the B2B LinkedIn content writer guidelines (120-180 words), while the slides must contain ONLY the essence - very concise key points.
 
 OUTPUT FORMAT  
 {
-  "generated_post": "Complete LinkedIn post here (${wordCountInstruction})...",
+  "generated_post": "Complete LinkedIn post here (120-180 words)...",
   "slides": [
      { "index": 1, "title": "...", "body": "..." },
      { "index": 2, "title": "...", "body": "..." }
