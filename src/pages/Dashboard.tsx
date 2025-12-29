@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash, Trash2, Plus, Search, Download, Edit, Copy, X, ChevronLeft, ChevronRight, Palette, GripVertical, MoreVertical } from "lucide-react";
+import { Loader2, Trash, Trash2, Plus, Search, Download, Edit, Copy, X, ChevronLeft, ChevronRight, ArrowUp, Palette, GripVertical, MoreVertical } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { debounce } from "lodash";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1889,35 +1889,34 @@ const handleCreateCarousel = async () => {
               {/* Compact New Post Input at Top of Feed */}
               <div className="mb-4">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="space-y-3">
-                    <Textarea
-                      placeholder="Start here with an idea or a post"
-                      value={newCarouselText}
-                      onChange={(e) => setNewCarouselText(e.target.value)}
-                      className="border-gray-200 bg-gray-50 focus:bg-white focus:border-gray-300 transition-all duration-200 text-sm resize-none min-h-[40px] max-h-[200px] overflow-hidden"
-                      style={{ direction: 'ltr' }}
-                      disabled={creatingCarousel}
-                      rows={1}
-                      onInput={(e) => {
-                        const target = e.target as HTMLTextAreaElement;
-                        target.style.height = 'auto';
-                        target.style.height = `${target.scrollHeight}px`;
-                      }}
-                    />
+                  <div className="flex gap-2 items-end">
                     <Button
                       onClick={handleCreateCarousel}
                       disabled={creatingCarousel || !newCarouselText.trim()}
-                      className="w-full h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200 font-medium text-sm"
+                      className="h-10 w-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200 flex items-center justify-center"
                     >
                       {creatingCarousel ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {creatingCarouselPhase}
-                        </>
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        "Hit Me"
+                        <ArrowUp className="h-4 w-4" />
                       )}
                     </Button>
+                    <div className="flex-1">
+                      <Textarea
+                        placeholder="Start here with an idea or a post"
+                        value={newCarouselText}
+                        onChange={(e) => setNewCarouselText(e.target.value)}
+                        className="border-gray-200 bg-gray-50 focus:bg-white focus:border-gray-300 transition-all duration-200 text-sm resize-none min-h-[40px] max-h-[200px] overflow-hidden"
+                        style={{ direction: 'ltr' }}
+                        disabled={creatingCarousel}
+                        rows={1}
+                        onInput={(e) => {
+                          const target = e.target as HTMLTextAreaElement;
+                          target.style.height = 'auto';
+                          target.style.height = `${target.scrollHeight}px`;
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
