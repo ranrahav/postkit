@@ -6,13 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash, Trash2, Plus, Search, Download, Edit, Copy, X, ChevronLeft, ChevronRight, ArrowUp, Palette, GripVertical, MoreVertical } from "lucide-react";
+import { Loader2, Trash2, Plus, Search, Download, Edit, Copy, X, ChevronLeft, ChevronRight, Palette, GripVertical, MoreVertical } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { debounce } from "lodash";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import SlidePreview from "@/components/SlidePreview";
 import ColorPicker from "@/components/ui/color-picker";
@@ -126,49 +126,6 @@ const Dashboard = () => {
   const [carousels, setCarousels] = useState<Carousel[]>([]);
   const [selectedCarousel, setSelectedCarousel] = useState<Carousel | null>(null);
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(0);
-  
-  // Independent indexing for each visual category
-  const [visualSlideIndexes, setVisualSlideIndexes] = useState<{[key: string]: {
-    carousel: number;
-    photo: number;
-    video: number;
-  }}>({});
-  
-  // Helper functions for independent visual indexing
-  const getVisualIndex = (carouselId: string, visualType: 'carousel' | 'photo' | 'video'): number => {
-    return visualSlideIndexes[carouselId]?.[visualType] || 0;
-  };
-  
-  const setVisualIndex = (carouselId: string, visualType: 'carousel' | 'photo' | 'video', index: number) => {
-    setVisualSlideIndexes(prev => ({
-      ...prev,
-      [carouselId]: {
-        ...prev[carouselId],
-        [visualType]: index
-      }
-    }));
-  };
-  
-  const getMaxIndex = (visualType: 'carousel' | 'photo' | 'video'): number => {
-    switch (visualType) {
-      case 'carousel':
-        return selectedCarousel ? Math.max(0, parseSlides(selectedCarousel.slides).length - 1) : 0;
-      case 'photo':
-        return 2; // Assuming 3 photos (0, 1, 2)
-      case 'video':
-        return 1; // Assuming 2 videos (0, 1)
-      default:
-        return 0;
-    }
-  };
-  
-  const navigateVisualSlide = (carouselId: string, visualType: 'carousel' | 'photo' | 'video', direction: number) => {
-    const currentIndex = getVisualIndex(carouselId, visualType);
-    const maxIndex = getMaxIndex(visualType);
-    const newIndex = Math.max(0, Math.min(currentIndex + direction, maxIndex));
-    setVisualIndex(carouselId, visualType, newIndex);
-  };
-  
   const [isNewUser, setIsNewUser] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -857,23 +814,35 @@ const detectTopicType = (text: string): 'person' | 'concept' | 'general' => {
   return 'general';
 };
 
-// Function to generate concise post based on topic type (25-75 words)
+// Function to generate concise post based on topic type
 const generateConcisePost = (topic: string): string => {
   const topicType = detectTopicType(topic);
   const cleanTopic = topic.replace(/^(i want to know more about|tell me about|who is|about)\s+/i, '').trim();
   
   if (topicType === 'person') {
-    // Generate content about a person (25-75 words)
-    return `Let's explore the remarkable journey of ${cleanTopic}. This individual has made significant contributions that have inspired and influenced many in their field. Their story demonstrates exceptional dedication and perseverance. What aspects of ${cleanTopic}'s journey do you find most inspiring?`;
+    // Generate content about a person
+    return `Let's explore the remarkable journey of ${cleanTopic}. This individual has made significant contributions that have inspired and influenced many in their field.
+
+Their story demonstrates exceptional dedication, talent, and perseverance. Through various challenges and achievements, they've established themselves as a notable figure worth understanding and learning from.
+
+What aspects of ${cleanTopic}'s journey do you find most inspiring? I'd love to hear your thoughts and perspectives on their impact and legacy.`;
   }
   
   if (topicType === 'concept') {
-    // Generate content about a business concept (25-75 words)
-    return `${cleanTopic} has become increasingly important in today's professional landscape. Understanding its core principles can transform how we approach modern challenges and opportunities. The key benefits include improved efficiency, strategic thinking, and better outcomes. How have you encountered ${cleanTopic} in your work?`;
+    // Generate content about a business concept
+    return `${cleanTopic} has become increasingly important in today's professional landscape. Understanding its core principles can transform how we approach modern challenges and opportunities.
+
+The key benefits include improved efficiency, strategic thinking, and better outcomes. Organizations and professionals who embrace these concepts often see measurable improvements in their performance and results.
+
+How have you encountered ${cleanTopic} in your work? Share your experiences and let's discuss practical applications together.`;
   }
   
-  // Generate general content (25-75 words)
-  return `Exploring ${cleanTopic} opens up fascinating possibilities for growth and learning. This topic offers valuable insights that can benefit both personal and professional development. The opportunity lies in understanding different perspectives and approaches. What's your experience with ${cleanTopic}? I'm curious to hear your thoughts.`;
+  // Generate general content
+  return `Exploring ${cleanTopic} opens up fascinating possibilities for growth and learning. This topic offers valuable insights that can benefit both personal and professional development.
+
+The opportunity lies in understanding different perspectives and approaches. By diving deeper into this subject, we can discover new ways of thinking and innovative solutions to everyday challenges.
+
+What's your experience with ${cleanTopic}? I'm curious to hear your thoughts and learn from your unique perspective on this topic.`;
 };
 
 // Temporary frontend function to generate post content from topic/idea
@@ -989,30 +958,11 @@ const handleCreateCarousel = async () => {
       let processedText: string;
       
       if (wordCount < 25) {
-        // Short text: Use OpenAI to generate a complete post
+        // Short text: develop into a post of 75-150 words
         contentType = "topic_idea";
-        
-        // Call OpenAI to generate the post content
-        const { data: postData, error: postError } = await supabase.functions.invoke("generate-slides", {
-          body: {
-            text: newCarouselText,
-            style: "Professional",
-            language,
-            content_type: "topic_idea",
-            content_purpose: "thought_leadership",
-          },
-        });
-
-        if (postError) {
-          console.error("Error generating post content:", postError);
-          throw postError;
-        }
-
-        // Use the AI-generated post content
-        finalPostContent = postData.generated_post || postData.posts?.medium || newCarouselText;
-        processedText = finalPostContent;
-        
-        console.log("🤖 Generated post content using OpenAI:", finalPostContent.substring(0, 100));
+        processedText = newCarouselText;
+        // Generate a concise post from the description (75-150 words)
+        finalPostContent = generateConcisePost(newCarouselText);
       } else {
         // Long text: use as is and create essence slides
         contentType = "full_post";
@@ -1857,34 +1807,14 @@ const handleCreateCarousel = async () => {
   }
 
   return (
-    <div dir="rtl" className="relative min-h-screen overflow-hidden bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-4 flex items-center justify-between h-[53px]">
-        {/* Left side - Sign out at extreme edge */}
-        <Button 
-          variant="ghost" 
-          onClick={handleSignOut}
-          className="h-9 px-4 rounded-lg text-sm font-medium text-muted-foreground/80 hover:text-foreground hover:bg-background/60 transition-all duration-300 ease-out border border-border/30 hover:border-border/50 shadow-sm"
-        > 
-          Sign Out
-        </Button>
-        
-        {/* Center - Mobile title (hidden on desktop) */}
-        <div className="md:hidden flex items-center justify-center flex-1">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-lg shadow-primary/30">
-              <Palette className="h-4 w-4 text-white/95" />
-            </div>
-            <h1 className="text-lg font-bold tracking-tight text-primary">
-              Post24
-            </h1>
-          </div>
-        </div>
-        
-        {/* Center - Empty space for gap + feed (desktop only) */}
-        <div className="hidden md:flex flex-1"></div>
-        
-        {/* Right side - Logo positioned above Posts title */}
-        <div className="hidden md:flex w-[280px] flex-shrink-0 items-center gap-3 justify-end">
+    <div dir="rtl" className="relative min-h-screen overflow-hidden bg-gradient-to-b from-background to-muted">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-28 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
+        <div className="absolute -bottom-32 right-10 h-[28rem] w-[28rem] rounded-full bg-accent/20 blur-3xl" />
+      </div>
+      {/* Header */}
+      <header dir="ltr" className="border-b border-border/40 bg-background/80 backdrop-blur-2xl sticky top-0 z-50 shadow-sm">
+        <div className="flex items-center justify-between px-6 py-2">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 ring-1 ring-border/30 backdrop-blur-sm">
               <Palette className="h-5 w-5 text-white/95" />
@@ -1895,439 +1825,21 @@ const handleCreateCarousel = async () => {
               </h1>
             </div>
           </div>
+          <Button 
+            variant="ghost" 
+            onClick={handleSignOut}
+            className="h-9 px-4 rounded-lg text-sm font-medium text-muted-foreground/80 hover:text-foreground hover:bg-background/60 transition-all duration-300 ease-out border border-border/30 hover:border-border/50 shadow-sm"
+          > 
+            Sign Out
+          </Button>
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-53px)] overflow-hidden justify-center">
-        <div className="flex gap-4 max-w-7xl w-full px-4 md:px-6 justify-center">
-          {/* Main Content Area - Vertical Feed View */}
-          <div className="w-full lg:max-w-2xl flex flex-col min-w-0 overflow-hidden">
-            {/* Preview Area - Vertical Feed */}
-            <div className="flex-1 overflow-auto scrollbar-hide py-4" id="posts-feed-container">
-              {/* Compact New Post Input at Top of Feed */}
-              <div className="mb-4">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="flex gap-2 items-end">
-                    <Button
-                      onClick={handleCreateCarousel}
-                      disabled={creatingCarousel || !newCarouselText.trim()}
-                      className="h-10 w-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200 flex items-center justify-center"
-                    >
-                      {creatingCarousel ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <ArrowUp className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <div className="flex-1">
-                      <Textarea
-                        placeholder="Start here with an idea or a post"
-                        value={newCarouselText}
-                        onChange={(e) => setNewCarouselText(e.target.value)}
-                        className="border-gray-200 bg-gray-50 focus:bg-white focus:border-gray-300 transition-all duration-200 text-sm resize-none min-h-[40px] max-h-[200px] overflow-hidden"
-                        style={{ direction: 'ltr' }}
-                        disabled={creatingCarousel}
-                        rows={1}
-                        onInput={(e) => {
-                          const target = e.target as HTMLTextAreaElement;
-                          target.style.height = 'auto';
-                          target.style.height = `${target.scrollHeight}px`;
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {filteredCarousels.length > 0 ? (
-                <div className="w-full space-y-4">
-                  {filteredCarousels.map((carousel) => {
-                    const isSelected = selectedCarousel?.id === carousel.id;
-                    return (
-                      <div 
-                        key={carousel.id}
-                        id={`post-${carousel.id}`}
-                        className={`transition-all duration-300 rounded-lg ${
-                          isSelected ? 'ring-1 ring-blue-400/30 shadow-lg shadow-blue-500/10 bg-blue-50/20' : ''
-                        }`}
-                        onClick={() => selectCarousel(carousel)}
-                      >
-                        {/* Single Unified Post View - LinkedIn-style */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full cursor-pointer hover:shadow-md transition-shadow">
-                                                
-                        {/* Text Section */}
-                        <div className="px-6 py-5">
-                          <div className="text-gray-900 leading-relaxed whitespace-pre-wrap text-base" style={{ textAlign: 'left', direction: 'ltr' }}>
-                            {(() => {
-                              const evolution = postTextEvolution[carousel.id] || { current: 'awareness', versions: {} };
-                              const postContent = evolution.versions[evolution.current] || carousel.post_content || "No post content available.";
-                              const isExpanded = expandedPosts.has(carousel.id);
-                              
-                              if (postContent === "No post content available.") {
-                                return (
-                                  <>
-                                    <span className="text-gray-400">No post content available.</span>
-                                  </>
-                                );
-                              }
-                              
-                              const paragraphs = postContent.split('\n\n').filter(p => p.trim());
-                              
-                              if (paragraphs.length <= 2 || isExpanded) {
-                                return (
-                                  <>
-                                    {paragraphs.map((paragraph, index) => (
-                                      <span key={index}>
-                                        {paragraph}
-                                        {index < paragraphs.length - 1 && '\n\n'}
-                                      </span>
-                                    ))}
-                                  </>
-                                );
-                              } else {
-                                const visibleParagraphs = paragraphs.slice(0, 2);
-                                const hiddenParagraphs = paragraphs.slice(2);
-                                
-                                return (
-                                  <>
-                                    {visibleParagraphs.map((paragraph, index) => (
-                                      <span key={index}>
-                                        {paragraph}
-                                        {index < visibleParagraphs.length - 1 && '\n\n'}
-                                      </span>
-                                    ))}
-                                    <span 
-                                      className="text-gray-400 cursor-pointer hover:text-gray-600 inline-block"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setExpandedPosts(prev => new Set([...prev, carousel.id]));
-                                      }}
-                                    >
-                                      {' ...Show more'}
-                                    </span>
-                                  </>
-                                );
-                              }
-                            })() as React.ReactNode}
-                          </div>
-                        </div>
-                        
-                        {/* Text Directional Hints - Only for selected post */}
-                        {isSelected && carousel.post_content && carousel.post_content !== "No post content available." && (
-                          <div className="px-6 pb-3">
-                            <div className="flex justify-between items-center text-sm font-medium">
-                              <div 
-                                className="cursor-pointer text-blue-500 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const current = postTextEvolution[carousel.id]?.current || 'awareness';
-                                  if (current === 'discussion') {
-                                    setPostTextEvolution(prev => ({
-                                      ...prev,
-                                      [carousel.id]: {
-                                        current: 'awareness',
-                                        versions: prev[carousel.id]?.versions || {}
-                                      }
-                                    }));
-                                  } else if (current === 'awareness') {
-                                    if (!isEvolvingText) {
-                                      handleTextEvolution(carousel.id, 'storytelling');
-                                    }
-                                  }
-                                }}
-                              >
-                                {(postTextEvolution[carousel.id]?.current || 'awareness') === 'awareness' || 
-                                 (postTextEvolution[carousel.id]?.current || 'awareness') === 'discussion' ? 'Longer post →' : ''}
-                              </div>
-                              <div 
-                                className="cursor-pointer text-blue-500 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const current = postTextEvolution[carousel.id]?.current || 'awareness';
-                                  if (current === 'storytelling') {
-                                    setPostTextEvolution(prev => ({
-                                      ...prev,
-                                      [carousel.id]: {
-                                        current: 'awareness',
-                                        versions: prev[carousel.id]?.versions || {}
-                                      }
-                                    }));
-                                  } else if (current === 'awareness') {
-                                    if (!isEvolvingText) {
-                                      handleTextEvolution(carousel.id, 'discussion');
-                                    }
-                                  }
-                                }}
-                              >
-                                {(postTextEvolution[carousel.id]?.current || 'awareness') === 'awareness' || 
-                                 (postTextEvolution[carousel.id]?.current || 'awareness') === 'storytelling' ? '← Shorter post' : ''}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Visual Section - Carousel with Navigation */}
-                        <div className="px-6 pb-6">
-                            <div className="flex justify-center items-center gap-3">
-                              {/* Right Arrow - Now on left side */}
-                              <div className="w-8 flex justify-center">
-                                {(() => {
-                                  const currentVisual = postVisualEvolution[carousel.id] || 'photo';
-                                  const currentIndex = getVisualIndex(carousel.id, currentVisual);
-                                  const maxIndex = getMaxIndex(currentVisual);
-                                  
-                                  return maxIndex > 0 && currentIndex < maxIndex && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigateVisualSlide(carousel.id, currentVisual, 1);
-                                      }}
-                                      className="bg-gray-100/80 hover:bg-gray-200/80 rounded-full p-1.5 transition-all duration-200 ease-out"
-                                    >
-                                      <ChevronRight className="w-4 h-4 text-gray-500" />
-                                    </button>
-                                  );
-                                })() as React.ReactNode}
-                              </div>
-                              
-                              {/* Visual Content */}
-                              <div className="w-full max-w-md relative">
-                                {(() => {
-                                  const currentVisual = postVisualEvolution[carousel.id] || 'photo';
-                                  
-                                  if (currentVisual === 'photo') {
-                                    // Photo placeholder with index
-                                    const photoIndex = getVisualIndex(carousel.id, 'photo');
-                                    const photoLabels = ['Photo 1', 'Photo 2', 'Photo 3'];
-                                    const photoEmojis = ['🏞️', '🎨', '📸'];
-                                    
-                                    return (
-                                      <div className="relative bg-gray-200 rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
-                                        <div className="h-full flex items-center justify-center">
-                                          <div className="text-center">
-                                            <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2 flex items-center justify-center">
-                                              <span className="text-gray-500 text-2xl">{photoEmojis[photoIndex] || '📷'}</span>
-                                            </div>
-                                            <p className="text-gray-500 text-sm">{photoLabels[photoIndex] || 'Photo placeholder'}</p>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  } else if (currentVisual === 'video') {
-                                    // Video placeholder with index
-                                    const videoIndex = getVisualIndex(carousel.id, 'video');
-                                    const videoLabels = ['Video 1', 'Video 2'];
-                                    const videoEmojis = ['🎬', '🎥'];
-                                    
-                                    return (
-                                      <div className="relative bg-gray-200 rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
-                                        <div className="h-full flex items-center justify-center">
-                                          <div className="text-center">
-                                            <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2 flex items-center justify-center">
-                                              <span className="text-gray-500 text-2xl">{videoEmojis[videoIndex] || '▶️'}</span>
-                                            </div>
-                                            <p className="text-gray-500 text-sm">{videoLabels[videoIndex] || 'Video placeholder'}</p>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  } else {
-                                    // Default carousel
-                                    return (
-                                      <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '5/4' }}>
-                                        {/* Show current slide */}
-                                        {(() => {
-                                  const currentVisual = postVisualEvolution[carousel.id] || 'photo';
-                                  const currentIndex = getVisualIndex(carousel.id, currentVisual);
-                                  
-                                  if (currentVisual === 'carousel' && parseSlides(carousel.slides).length > 0) {
-                                    return (
-                                      <div className="h-full flex items-center justify-center p-8">
-                                        <div className="text-center" style={{ textAlign: 'left', direction: 'ltr' }}>
-                                          <h3 className="text-xl font-bold mb-4" style={{ 
-                                            color: '#FFFFFF',
-                                            backgroundColor: '#000000',
-                                            textAlign: 'left'
-                                          }}>
-                                            {parseSlides(carousel.slides)[currentIndex]?.title || "Untitled"}
-                                          </h3>
-                                          <p className="text-base leading-relaxed" style={{ 
-                                            color: '#FFFFFF',
-                                            backgroundColor: '#000000',
-                                            textAlign: 'left'
-                                          }}>
-                                            {parseSlides(carousel.slides)[currentIndex]?.body || ""}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    );
-                                  }
-                                  
-                                  return null;
-                                })() as React.ReactNode}
-                                        
-                                        {/* Slide Counter - Bottom Left */}
-                                        {(() => {
-                                          const currentVisual = postVisualEvolution[carousel.id] || 'photo';
-                                          const currentIndex = getVisualIndex(carousel.id, currentVisual);
-                                          const maxIndex = getMaxIndex(currentVisual);
-                                          
-                                          return maxIndex > 0 && (
-                                            <div className="absolute bottom-4 left-4 text-white/60 text-xs font-medium">
-                                              {currentIndex + 1}/{maxIndex + 1}
-                                            </div>
-                                          );
-                                        })() as React.ReactNode}
-                                      </div>
-                                    );
-                                  }
-                                })()}
-                              </div>
-                              
-                              {/* Left Arrow - Now on right side */}
-                              <div className="w-8 flex justify-center">
-                                {(() => {
-                                  const currentVisual = postVisualEvolution[carousel.id] || 'photo';
-                                  const currentIndex = getVisualIndex(carousel.id, currentVisual);
-                                  
-                                  return currentIndex > 0 && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigateVisualSlide(carousel.id, currentVisual, -1);
-                                      }}
-                                      className="bg-gray-100/80 hover:bg-gray-200/80 rounded-full p-1.5 transition-all duration-200 ease-out"
-                                    >
-                                      <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
-                                    </button>
-                                  );
-                                })() as React.ReactNode}
-                              </div>
-                            </div>
-                            
-                            {/* Visual Evolution Controls - iOS6 Glass Effect */}
-                            <div className="flex justify-center gap-2 mt-4">
-                              <button 
-                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
-                                  (postVisualEvolution[carousel.id] || 'photo') === 'video' 
-                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
-                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPostVisualEvolution(prev => ({
-                                    ...prev,
-                                    [carousel.id]: 'video'
-                                  }));
-                                }}
-                              >
-                                Video
-                              </button>
-                              <button 
-                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
-                                  (postVisualEvolution[carousel.id] || 'photo') === 'photo' 
-                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
-                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPostVisualEvolution(prev => ({
-                                    ...prev,
-                                    [carousel.id]: 'photo'
-                                  }));
-                                }}
-                              >
-                                Photo
-                              </button>
-                              <button 
-                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 backdrop-blur-sm ${
-                                  (postVisualEvolution[carousel.id] || 'photo') === 'carousel' 
-                                    ? 'bg-gray-900/10 text-gray-900 border border-gray-200/50' 
-                                    : 'bg-white/60 text-gray-600 border border-gray-200/30 hover:bg-white/80 hover:text-gray-800'
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPostVisualEvolution(prev => ({
-                                    ...prev,
-                                    [carousel.id]: 'carousel'
-                                  }));
-                                }}
-                              >
-                                Carousel
-                              </button>
-                            </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                  })}
-                </div>
-              ) : (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center space-y-4">
-                    <h3 className="text-xl font-semibold">No posts yet</h3>
-                    <p className="text-muted-foreground">
-                      Create your first post to get started
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-        {/* Posts Panel - Aligned with Post Height */}
-          <div dir="ltr" className="hidden lg:block w-[280px] flex-shrink-0 overflow-hidden">
-            <div className="h-full flex flex-col py-4">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col h-full">
-                <div className="p-4 border-b border-gray-100 text-left">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Posts</h2>
-                  <span className="text-sm text-gray-500 font-medium">
-                    {profile?.carousel_count || 0}/10
-                  </span>
-                </div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search Post"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-10 rounded-lg border-gray-200 bg-gray-50 focus:bg-white focus:border-gray-300 transition-all duration-200 text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Carousel List */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
-            {filteredCarousels.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No carousels found</p>
-              </div>
-            ) : (
-              filteredCarousels.map((carousel, index) => {
-                const firstSlide = parseSlides(carousel.slides)[0];
-                const isWelcomeCarousel = carousel.id === 'welcome-carousel';
-                
-                return (
-                  <div
-                    key={carousel.id}
-                    className={`relative group cursor-pointer transition-all duration-200 ${
-                      selectedCarousel?.id === carousel.id 
-                        ? 'ring-2 ring-blue-500 bg-blue-50' 
-                        : 'hover:bg-gray-50'
-                    } rounded-lg p-3 border border-gray-200`}
-                    onClick={() => {
-                      selectCarousel(carousel);
-                      // Scroll to the post in the feed
-                      setTimeout(() => {
-                        const postElement = document.getElementById(`post-${carousel.id}`);
-                        if (postElement) {
-                          postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                      }, 100);
-                    }}
-                    draggable
-                    onDragStart={(e) => handleCarouselDragStart(e, index)}
+      <div className="flex h-[calc(100vh-53px)] overflow-hidden bg-gray-50">
+        {/* Main Content Area - LinkedIn-style centered layout */}
+        <div className="flex-1 flex justify-center overflow-hidden">
+          <div className="w-full max-w-5xl flex gap-6 p-6"</div>
+        </div>
                     onDragOver={(e) => handleCarouselDragOver(e, index)}
                     onDragLeave={handleCarouselDragLeave}
                     onDrop={(e) => handleCarouselDrop(e, index)}
@@ -2423,9 +1935,6 @@ const handleCreateCarousel = async () => {
                 );
               })
             )}
-          </div>
-            </div>
-          </div>
           </div>
         </div>
       </div>

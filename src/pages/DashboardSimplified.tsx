@@ -123,8 +123,16 @@ const Dashboard = () => {
       
       // Transform old carousel data to new Post format
       const transformedPosts: Post[] = (data || []).map((item: any) => {
-        // Try to parse stored visuals or create defaults
+        // Try to parse stored posts and visuals or create defaults
+        let posts: PostVersions | undefined;
         let visuals: Visuals;
+        
+        try {
+          posts = item.posts ? JSON.parse(item.posts) : undefined;
+        } catch {
+          posts = undefined;
+        }
+        
         try {
           visuals = item.visuals ? JSON.parse(item.visuals) : {
             summary_sentence: item.carousel_name || "Key insight",
@@ -144,7 +152,7 @@ const Dashboard = () => {
           user_id: item.user_id,
           input_text: item.original_text || "",
           is_idea: (item.original_text || "").split(/\s+/).length < 25,
-          posts: item.posts ? JSON.parse(item.posts) : undefined,
+          posts,
           current_version: 'medium' as const,
           visuals,
           created_at: item.created_at,
@@ -218,6 +226,8 @@ const Dashboard = () => {
           original_text: inputText,
           carousel_name: data.visuals?.summary_sentence || inputText.substring(0, 50),
           slides: JSON.stringify(data.visuals?.stats_slides || []),
+          posts: data.posts ? JSON.stringify(data.posts) : null,
+          visuals: data.visuals ? JSON.stringify(data.visuals) : null,
           chosen_template: "dark",
           cover_style: "minimalist",
           background_color: "#000000",
