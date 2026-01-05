@@ -742,7 +742,7 @@ const Dashboard = () => {
                     {visualType === 'carousel' && carouselIndex > 0 && (
                       <button
                         onClick={(e) => { e.stopPropagation(); navigateCarousel(post.id, -1, maxCarouselIndex); }}
-                        className="absolute left-[-2px] top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
+                        className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full bg-gray-100 hover:bg-gray-200 border border-gray-300"
                       >
                         <ChevronLeft className="w-3 h-3 text-gray-500" />
                       </button>
@@ -868,7 +868,7 @@ const Dashboard = () => {
                     {visualType === 'carousel' && carouselIndex < maxCarouselIndex && (
                       <button
                         onClick={(e) => { e.stopPropagation(); navigateCarousel(post.id, 1, maxCarouselIndex); }}
-                        className="absolute right-[-2px] top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
+                        className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full bg-gray-100 hover:bg-gray-200 border border-gray-300"
                       >
                         <ChevronRight className="w-3 h-3 text-gray-500" />
                       </button>
