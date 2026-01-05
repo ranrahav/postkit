@@ -1859,7 +1859,31 @@ const handleCreateCarousel = async () => {
   return (
     <div dir="rtl" className="relative min-h-screen overflow-hidden bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-4 flex items-center justify-between h-[53px]">
-        {/* Left side - Sign out at extreme edge */}
+        {/* Left side - Logo positioned at extreme edge */}
+        <div className="hidden md:flex w-[280px] flex-shrink-0 items-center gap-3 justify-start">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-sm ring-1 ring-border/50">
+              <Palette className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-2xl font-semibold text-foreground">Post24</h1>
+          </div>
+        </div>
+        
+        {/* Left side - Mobile logo */}
+        <div className="md:hidden flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-sm ring-1 ring-border/50">
+            <Palette className="h-5 w-5 text-white" />
+          </div>
+          <h1 className="text-2xl font-semibold text-foreground">Post24</h1>
+        </div>
+        
+        {/* Center - Empty space for mobile */}
+        <div className="md:hidden flex-1"></div>
+        
+        {/* Center - Empty space for gap + feed (desktop only) */}
+        <div className="hidden md:flex flex-1"></div>
+        
+        {/* Right side - Sign out at extreme edge */}
         <Button 
           variant="ghost" 
           onClick={handleSignOut}
@@ -1867,35 +1891,6 @@ const handleCreateCarousel = async () => {
         > 
           Sign Out
         </Button>
-        
-        {/* Center - Mobile title (hidden on desktop) */}
-        <div className="md:hidden flex items-center justify-center flex-1">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-lg shadow-primary/30">
-              <Palette className="h-4 w-4 text-white/95" />
-            </div>
-            <h1 className="text-lg font-bold tracking-tight text-primary">
-              Post24
-            </h1>
-          </div>
-        </div>
-        
-        {/* Center - Empty space for gap + feed (desktop only) */}
-        <div className="hidden md:flex flex-1"></div>
-        
-        {/* Right side - Logo positioned above Posts title */}
-        <div className="hidden md:flex w-[280px] flex-shrink-0 items-center gap-3 justify-end">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg shadow-primary/30 ring-1 ring-border/30 backdrop-blur-sm">
-              <Palette className="h-5 w-5 text-white/95" />
-            </div>
-            <div className="flex flex-col">
-              <h1 className="text-xl font-bold tracking-tight text-primary">
-                Post24
-              </h1>
-            </div>
-          </div>
-        </div>
       </header>
 
       <div className="flex h-[calc(100vh-53px)] overflow-hidden justify-center">

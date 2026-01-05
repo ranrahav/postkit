@@ -535,15 +535,15 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-sm ring-1 ring-border/50">
+            <Palette className="h-5 w-5 text-white" />
+          </div>
+          <h1 className="text-2xl font-semibold text-foreground">Post24</h1>
+        </div>
         <Button variant="ghost" onClick={handleSignOut} className="text-gray-500 hover:text-gray-700">
           Sign Out
         </Button>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-            <Palette className="h-5 w-5 text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">Post24</h1>
-        </div>
       </header>
 
       <div className="flex h-[calc(100vh-65px)] overflow-hidden justify-center">
