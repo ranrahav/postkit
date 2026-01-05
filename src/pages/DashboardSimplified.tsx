@@ -704,7 +704,7 @@ const Dashboard = () => {
                       : ''
                   }`}>
                   {/* Post Text */}
-                  <div className="pt-6 px-[68px]">
+                  <div className="pt-6 px-[34px]">
                     <p 
                       className="text-gray-900 whitespace-pre-wrap leading-relaxed"
                       dir={isHebrew(getDisplayText(post)) ? 'rtl' : 'ltr'}
@@ -822,12 +822,12 @@ const Dashboard = () => {
                         </div>
 
                         <div 
-                          className="h-full flex items-center justify-center p-8"
+                          className="h-full flex items-center justify-center"
                           dir={isHebrew(post.visuals.summary_sentence || post.visuals.quote || "") ? 'rtl' : 'ltr'}
                         >
                           {visualType === 'summary' && (
                             <p 
-                              className="text-2xl font-bold text-center"
+                              className="text-[clamp(1rem,4vw,1.5rem)] font-bold text-center"
                               dir={isHebrew(post.visuals.summary_sentence) ? 'rtl' : 'ltr'}
                             >
                               {post.visuals.summary_sentence}
@@ -835,7 +835,7 @@ const Dashboard = () => {
                           )}
                           {visualType === 'quote' && (
                             <p 
-                              className="text-4xl italic text-center leading-tight font-serif px-4"
+                              className="text-[clamp(1.25rem,5vw,2.25rem)] italic text-center leading-tight font-serif px-4"
                               dir={isHebrew(post.visuals.quote) ? 'rtl' : 'ltr'}
                             >
                               {post.visuals.quote}
@@ -846,10 +846,10 @@ const Dashboard = () => {
                               className="text-center w-full"
                               dir={isHebrew(post.visuals.stats_slides[carouselIndex].stat || post.visuals.stats_slides[carouselIndex].context || "") ? 'rtl' : 'ltr'}
                             >
-                              <p className="text-3xl font-bold mb-4">
+                              <p className="text-[clamp(1.125rem,4.5vw,1.875rem)] font-bold mb-4">
                                 {post.visuals.stats_slides[carouselIndex].stat}
                               </p>
-                              <p className="text-lg opacity-80">
+                              <p className="text-[clamp(0.875rem,3vw,1.125rem)] opacity-80">
                                 {post.visuals.stats_slides[carouselIndex].context}
                               </p>
                             </div>

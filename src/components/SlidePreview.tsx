@@ -81,7 +81,7 @@ const SlidePreview = ({
       onClick={handleContainerClick}
     >
       <div
-        className="w-full h-full p-12 flex flex-col justify-between relative"
+        className="w-full h-full flex flex-col justify-between relative"
         style={{
           backgroundColor: backgroundColor,
           color: textColor,
@@ -135,7 +135,7 @@ const SlidePreview = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col justify-center relative z-10" dir={textDirection}>
+        <div className="flex-1 flex flex-col justify-center relative z-10 p-6" dir={textDirection}>
           {editingField === 'title' ? (
             <input
               type="text"

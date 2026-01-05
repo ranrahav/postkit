@@ -75,11 +75,8 @@ const LinkedInCarouselPreview = ({
       className="relative mx-auto flex flex-col items-center gap-3"
       style={{ width: `${previewWidth}px` }}
     >
-      {/* LinkedIn-style container with rounded corners and shadow */}
-      <div className="relative bg-card rounded-xl shadow-lg overflow-hidden border border-border w-full">
-        {/* Slide content */}
-        <div className="relative">
-          <SlidePreview
+      {/* Slide content - no container, direct to feed edges */}
+      <SlidePreview
             slide={slides[currentSlideIndex]}
             template={template}
             slideNumber={currentSlideIndex + 1}
@@ -98,8 +95,6 @@ const LinkedInCarouselPreview = ({
             showSlideNumber={false}
             textDirection={detectTextDirection(slides[currentSlideIndex].title + " " + slides[currentSlideIndex].body)}
           />
-        </div>
-      </div>
 
       {/* Footer controls below the preview */}
       {slides.length > 1 && (
