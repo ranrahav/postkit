@@ -737,28 +737,25 @@ const Dashboard = () => {
                   </div>
 
                   {/* Visual Preview */}
-                  <div className="px-6 pb-6">
-                    <div className="flex items-center gap-3">
-                      {/* Left Arrow */}
-                      <div className="w-8">
-                        {visualType === 'carousel' && carouselIndex > 0 && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); navigateCarousel(post.id, -1, maxCarouselIndex); }}
-                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200"
-                          >
-                            <ChevronLeft className="w-4 h-4 text-gray-500" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Visual Content */}
-                      <div 
-                        id={`visual-content-${post.id}`}
-                        className={`flex-1 rounded-lg overflow-hidden relative ${
-                          getVisualTheme(post.id) === 'dark' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
-                        }`} 
-                        style={{ aspectRatio: '5/4' }}
+                  <div className="px-6 pb-6 relative">
+                    {/* Left Arrow - positioned absolutely */}
+                    {visualType === 'carousel' && carouselIndex > 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigateCarousel(post.id, -1, maxCarouselIndex); }}
+                        className="absolute left-[-2px] top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
                       >
+                        <ChevronLeft className="w-3 h-3 text-gray-500" />
+                      </button>
+                    )}
+                    
+                    {/* Visual Content - full width with text margins */}
+                    <div 
+                      id={`visual-content-${post.id}`}
+                      className={`flex-1 rounded-lg overflow-hidden relative px-[34px] ${
+                        getVisualTheme(post.id) === 'dark' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
+                      }`} 
+                      style={{ aspectRatio: '5/4' }}
+                    >
                         {/* Visual Actions Dropdown */}
                         <div className="absolute top-4 right-4 z-20 export-ui-ignore">
                           <DropdownMenu>
@@ -867,21 +864,20 @@ const Dashboard = () => {
                         )}
                       </div>
 
-                      {/* Right Arrow */}
-                      <div className="w-8">
-                        {visualType === 'carousel' && carouselIndex < maxCarouselIndex && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); navigateCarousel(post.id, 1, maxCarouselIndex); }}
-                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200"
-                          >
-                            <ChevronRight className="w-4 h-4 text-gray-500" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Visual Type Selector */}
-                    <div className="flex justify-center gap-2 mt-4">
+                    {/* Right Arrow - positioned absolutely */}
+                    {visualType === 'carousel' && carouselIndex < maxCarouselIndex && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigateCarousel(post.id, 1, maxCarouselIndex); }}
+                        className="absolute right-[-2px] top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
+                      >
+                        <ChevronRight className="w-3 h-3 text-gray-500" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Visual Type Selector - positioned between visual and card end */}
+                  <div className="px-6 pb-4">
+                    <div className="flex justify-center gap-2">
                       {(['summary', 'quote', 'carousel'] as VisualType[]).map((type) => (
                         <button
                           key={type}
