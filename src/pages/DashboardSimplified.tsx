@@ -79,6 +79,8 @@ const Dashboard = () => {
   // Visual navigation state per post
   const [visualTypes, setVisualTypes] = useState<Record<string, VisualType>>({});
   const [carouselIndexes, setCarouselIndexes] = useState<Record<string, number>>({});
+  const [visualThemes, setVisualThemes] = useState<Record<string, 'dark' | 'light'>>({});
+  const [exporting, setExporting] = useState(false);
   
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -216,7 +218,15 @@ const Dashboard = () => {
         body: { text: inputText },
       });
 
-      if (error) throw error;
+      if (error) {
+        // If it's a supabase function error, it might have a details/message
+        const errorMessage = error.message || "Couldn't generate content. Please try again.";
+        throw new Error(errorMessage);
+      }
+      
+      if (!data || data.error) {
+        throw new Error(data?.error || "Invalid response from generator");
+      }
 
       // Save to database
       const { data: newPost, error: insertError } = await supabase
@@ -266,11 +276,11 @@ const Dashboard = () => {
       setInputText("");
       
       toast({ title: "Post created!" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating post:", error);
       toast({
-        title: "Error",
-        description: "Couldn't create post. Please try again.",
+        title: "Generation Failed",
+        description: error.message || "Couldn't create post. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -343,6 +353,148 @@ const Dashboard = () => {
 
   const getCarouselIndex = (postId: string): number => carouselIndexes[postId] || 0;
   
+  const getVisualTheme = (postId: string): 'dark' | 'light' => visualThemes[postId] || 'dark';
+
+  const toggleVisualTheme = (postId: string) => {
+    setVisualThemes(prev => ({
+      ...prev,
+      [postId]: prev[postId] === 'light' ? 'dark' : 'light'
+    }));
+  };
+
+  const handleDownloadVisual = async (post: Post) => {
+    const visualType = getVisualType(post.id);
+    setExporting(true);
+    
+    try {
+      const { toPng } = await import('html-to-image');
+      
+      if (visualType === 'carousel') {
+        const slides = post.visuals.stats_slides || [];
+        if (slides.length === 0) {
+          toast({ title: "Error", description: "No slides found in this carousel", variant: "destructive" });
+          return;
+        }
+
+        const JSZip = (await import('jszip')).default;
+        const zip = new JSZip();
+        const { createRoot } = await import('react-dom/client');
+        const React = await import('react');
+        
+        const baseWidth = 1080;
+        const baseHeight = 1350; // 4:5 ratio
+        
+        console.log(`Starting export of ${slides.length} slides...`);
+        
+        for (let i = 0; i < slides.length; i++) {
+          const container = document.createElement('div');
+          container.style.width = `${baseWidth}px`;
+          container.style.height = `${baseHeight}px`;
+          container.style.position = 'fixed';
+          container.style.left = '-9999px';
+          container.style.top = '0';
+          document.body.appendChild(container);
+          
+          const theme = getVisualTheme(post.id);
+          const bgColor = theme === 'dark' ? '#111827' : '#ffffff';
+          const textColor = theme === 'dark' ? '#ffffff' : '#111827';
+          
+          const slide = slides[i];
+          const root = createRoot(container);
+          
+          root.render(
+            <div 
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                backgroundColor: bgColor, 
+                color: textColor,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '80px',
+                textAlign: 'center',
+                fontFamily: 'sans-serif',
+                position: 'relative'
+              }}
+              dir={isHebrew(slide.stat + slide.context) ? 'rtl' : 'ltr'}
+            >
+              <div style={{ fontSize: '72px', fontWeight: 'bold', marginBottom: '40px', lineHeight: 1.2 }}>{slide.stat}</div>
+              <div style={{ fontSize: '40px', opacity: 0.8, lineHeight: 1.4 }}>{slide.context}</div>
+              <div style={{ 
+                position: 'absolute', 
+                bottom: '40px', 
+                left: isHebrew(slide.stat) ? 'auto' : '60px', 
+                right: isHebrew(slide.stat) ? '60px' : 'auto', 
+                fontSize: '24px', 
+                opacity: 0.6 
+              }}>
+                {i + 1}/{slides.length}
+              </div>
+            </div>
+          );
+          
+          // Wait for React to finish rendering and fonts to be ready
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const dataUrl = await toPng(container, { 
+            pixelRatio: 1, // Already at 1080x1350 base size
+            backgroundColor: bgColor,
+            width: baseWidth,
+            height: baseHeight
+          });
+          
+          const response = await fetch(dataUrl);
+          const blob = await response.blob();
+          zip.file(`slide-${i + 1}.png`, blob);
+          console.log(`Added slide ${i + 1} to ZIP`);
+          
+          root.unmount();
+          document.body.removeChild(container);
+        }
+        
+        console.log("Generating ZIP file...");
+        const content = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(content);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${post.visuals.summary_sentence.substring(0, 30)}-carousel.zip`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } else {
+        // Single slide (summary or quote)
+        const element = document.getElementById(`visual-content-${post.id}`);
+        if (!element) throw new Error("Visual element not found");
+        
+        // Hide the dropdown trigger and navigation arrows temporarily for clean export
+        const uiElements = element.querySelectorAll('.export-ui-ignore');
+        uiElements.forEach(el => (el as HTMLElement).style.display = 'none');
+        
+        try {
+          const dataUrl = await toPng(element, { 
+            pixelRatio: 2,
+            backgroundColor: getVisualTheme(post.id) === 'dark' ? '#111827' : '#ffffff'
+          });
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = `${post.visuals.summary_sentence.substring(0, 30)}-${visualType}.png`;
+          link.click();
+        } finally {
+          // Restore UI elements
+          uiElements.forEach(el => (el as HTMLElement).style.display = '');
+        }
+      }
+      
+      toast({ title: "Success", description: "Download started" });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to download visual", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const navigateCarousel = (postId: string, direction: number, maxIndex: number) => {
     const current = getCarouselIndex(postId);
     const newIndex = Math.max(0, Math.min(current + direction, maxIndex));
@@ -395,7 +547,7 @@ const Dashboard = () => {
       </header>
 
       <div className="flex h-[calc(100vh-65px)] overflow-hidden justify-center">
-        <div className="flex gap-4 max-w-7xl w-full px-4 md:px-6 justify-center">
+        <div className="flex gap-4 max-w-7xl w-full px-2 md:px-3 justify-center">
           {/* Posts Panel - Floating next to feed */}
           <div className="hidden lg:block w-[280px] flex-shrink-0 overflow-hidden">
             <div className="h-full flex flex-col py-4">
@@ -552,7 +704,7 @@ const Dashboard = () => {
                       : ''
                   }`}>
                   {/* Post Text */}
-                  <div className="p-6">
+                  <div className="pt-6 px-[68px]">
                     <p 
                       className="text-gray-900 whitespace-pre-wrap leading-relaxed"
                       dir={isHebrew(getDisplayText(post)) ? 'rtl' : 'ltr'}
@@ -563,19 +715,23 @@ const Dashboard = () => {
                     
                     {/* Version Controls - show for selected posts with versions OR for all ideas */}
                     {isSelected && (post.posts || post.is_idea) && (
-                      <div className="flex justify-between mt-4 text-sm font-medium">
-                        <button
-                          className="cursor-pointer text-blue-500 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-all duration-200"
-                          onClick={(e) => { e.stopPropagation(); handleVersionChange(post.id, 'shorter'); }}
-                        >
-                          {post.current_version !== 'short' ? '← Shorter post' : ''}
-                        </button>
-                        <button
-                          className="cursor-pointer text-blue-500 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-all duration-200"
-                          onClick={(e) => { e.stopPropagation(); handleVersionChange(post.id, 'longer'); }}
-                        >
-                          {post.current_version !== 'long' ? 'Longer post →' : ''}
-                        </button>
+                      <div className="flex justify-between mt-4 mb-4">
+                        {post.current_version !== 'short' ? (
+                          <button
+                            className="cursor-pointer bg-gray-100 text-gray-600 hover:bg-gray-200 px-3 py-1.5 rounded-full text-xs transition-all duration-200"
+                            onClick={(e) => { e.stopPropagation(); handleVersionChange(post.id, 'shorter'); }}
+                          >
+                            ← Shorter post
+                          </button>
+                        ) : <div />}
+                        {post.current_version !== 'long' ? (
+                          <button
+                            className="cursor-pointer bg-gray-100 text-gray-600 hover:bg-gray-200 px-3 py-1.5 rounded-full text-xs transition-all duration-200"
+                            onClick={(e) => { e.stopPropagation(); handleVersionChange(post.id, 'longer'); }}
+                          >
+                            Longer post →
+                          </button>
+                        ) : <div />}
                       </div>
                     )}
                   </div>
@@ -596,23 +752,100 @@ const Dashboard = () => {
                       </div>
 
                       {/* Visual Content */}
-                      <div className="flex-1 bg-gray-900 rounded-lg overflow-hidden relative" style={{ aspectRatio: '5/4' }}>
+                      <div 
+                        id={`visual-content-${post.id}`}
+                        className={`flex-1 rounded-lg overflow-hidden relative ${
+                          getVisualTheme(post.id) === 'dark' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
+                        }`} 
+                        style={{ aspectRatio: '5/4' }}
+                      >
+                        {/* Visual Actions Dropdown */}
+                        <div className="absolute top-4 right-4 z-20 export-ui-ignore">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`h-8 w-8 p-0 rounded-full hover:bg-black/10 transition-colors ${
+                                  getVisualTheme(post.id) === 'dark' ? 'text-white/60 hover:text-white hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                                }`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownloadVisual(post);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                Download Visual
+                              </DropdownMenuItem>
+                              
+                              <div className="h-px bg-gray-100 my-1" />
+                              
+                              <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Appearance
+                              </div>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setVisualThemes(prev => ({ ...prev, [post.id]: 'light' }));
+                                }}
+                                className={`cursor-pointer flex items-center justify-between ${getVisualTheme(post.id) === 'light' ? 'bg-blue-50 text-blue-600' : ''}`}
+                              >
+                                <div className="flex items-center">
+                                  <div className="w-3 h-3 rounded-full bg-white border border-gray-300 mr-2" />
+                                  Light Theme
+                                </div>
+                                {getVisualTheme(post.id) === 'light' && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setVisualThemes(prev => ({ ...prev, [post.id]: 'dark' }));
+                                }}
+                                className={`cursor-pointer flex items-center justify-between ${getVisualTheme(post.id) === 'dark' ? 'bg-blue-50 text-blue-600' : ''}`}
+                              >
+                                <div className="flex items-center">
+                                  <div className="w-3 h-3 rounded-full bg-gray-900 mr-2" />
+                                  Dark Theme
+                                </div>
+                                {getVisualTheme(post.id) === 'dark' && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
                         <div 
-                          className="h-full flex items-center justify-center p-8 text-white"
-                          dir={isHebrew(post.visuals.summary_sentence) ? 'rtl' : 'ltr'}
+                          className="h-full flex items-center justify-center p-8"
+                          dir={isHebrew(post.visuals.summary_sentence || post.visuals.quote || "") ? 'rtl' : 'ltr'}
                         >
                           {visualType === 'summary' && (
-                            <p className="text-2xl font-bold text-center">
+                            <p 
+                              className="text-2xl font-bold text-center"
+                              dir={isHebrew(post.visuals.summary_sentence) ? 'rtl' : 'ltr'}
+                            >
                               {post.visuals.summary_sentence}
                             </p>
                           )}
                           {visualType === 'quote' && (
-                            <p className="text-xl italic text-center">
+                            <p 
+                              className="text-4xl italic text-center leading-tight font-serif px-4"
+                              dir={isHebrew(post.visuals.quote) ? 'rtl' : 'ltr'}
+                            >
                               {post.visuals.quote}
                             </p>
                           )}
                           {visualType === 'carousel' && post.visuals.stats_slides?.[carouselIndex] && (
-                            <div className="text-center">
+                            <div 
+                              className="text-center w-full"
+                              dir={isHebrew(post.visuals.stats_slides[carouselIndex].stat || post.visuals.stats_slides[carouselIndex].context || "") ? 'rtl' : 'ltr'}
+                            >
                               <p className="text-3xl font-bold mb-4">
                                 {post.visuals.stats_slides[carouselIndex].stat}
                               </p>
@@ -624,7 +857,11 @@ const Dashboard = () => {
                         </div>
                         {/* Slide counter for carousel */}
                         {visualType === 'carousel' && post.visuals.stats_slides?.length > 0 && (
-                          <p className="absolute bottom-4 left-4 text-sm text-white/60">
+                          <p 
+                            className={`absolute bottom-4 text-sm opacity-60 ${
+                              isHebrew(post.visuals.stats_slides[carouselIndex].stat || "") ? 'right-4' : 'left-4'
+                            }`}
+                          >
                             {carouselIndex + 1}/{post.visuals.stats_slides.length}
                           </p>
                         )}
@@ -677,6 +914,17 @@ const Dashboard = () => {
 
         </div>
       </div>
+
+      {/* Export Loading Overlay */}
+      {exporting && (
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-[100] flex items-center justify-center">
+          <Card className="p-8 text-center bg-white shadow-2xl rounded-2xl border-gray-200">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-lg font-semibold text-gray-900">Preparing your visual...</p>
+            <p className="text-sm text-gray-500 mt-2">This may take a few seconds</p>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

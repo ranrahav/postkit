@@ -46,13 +46,38 @@ const ALLOWED_ORIGINS = [
   "https://postkit-*.vercel.app",
 ];
 
-const SYSTEM_MESSAGE = `You are Post24, an AI that creates LinkedIn content.
-Write for a professional B2B audience.
-Be clear, concise, insightful, and practical.
-No emojis or hashtags unless requested.
-ALWAYS respond with valid JSON only.`;
+const SYSTEM_MESSAGE = `You are Post24, a world-class LinkedIn Content Strategist and Ghostwriter.
+Your goal is to create highly engaging, viral-potential LinkedIn content that stops the scroll.
+
+LANGUAGE CRITICAL RULE:
+- You MUST detect the input language and respond in the EXACT SAME LANGUAGE.
+- If the input is in Hebrew, all generated posts, summary sentences, quotes, and slide content MUST BE IN HEBREW.
+- If the input is in English, respond in English.
+- NEVER translate Hebrew input to English.
+
+STYLE GUIDELINES:
+- Tone: Professional yet conversational, authoritative but accessible.
+- Hooks: Start with a powerful "hook" that creates curiosity or states a bold truth.
+- Structure: Use short sentences and plenty of white space for readability.
+- Engagement: Use rhetorical questions or clear calls-to-action (CTA).
+- Formatting: Use bullet points for lists.
+- Emojis: Use 2-3 relevant emojis per post to add visual personality (don't overdo it).
+- Hashtags: Include 3 relevant hashtags at the end.
+
+OUTPUT: ALWAYS respond with valid JSON only.`;
 
 const OPENAI_TIMEOUT_MS = 30000;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+const isHebrew = (text: string): boolean => {
+  if (!text) return false;
+  const hebrewChars = text.match(/[\u0590-\u05FF]/g) || [];
+  const totalChars = text.replace(/\s/g, '').length;
+  return totalChars > 0 && hebrewChars.length / totalChars > 0.3;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CORS
@@ -105,26 +130,21 @@ function validateRequest(body: RequestBody): string | null {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildPromptForIdea(text: string): string {
-  return `TASK: Create LinkedIn content from a short idea/topic.
+  return `TASK: Create premium LinkedIn content from this idea/topic: "${text}"
 
-INPUT IDEA: "${text}"
-
-Generate:
+STRICT LANGUAGE RULE: The input is in ${isHebrew(text) ? 'HEBREW' : 'ENGLISH'}. You MUST generate all content in ${isHebrew(text) ? 'HEBREW' : 'ENGLISH'}.
 
 1. THREE POST VERSIONS:
-   - short: 40-60 words, punchy and direct
-   - medium: 100-140 words, balanced depth
-   - long: 200-280 words, comprehensive
+   - short: ~50 words. Punchy, direct, great for quick engagement.
+   - medium: ~120 words. The "Standard" LinkedIn post. Includes a hook, body with 3-4 bullet points, and a CTA.
+   - long: ~250 words. Thought leadership style. Deep dive with context, examples, and a strong conclusion.
 
-Each post should:
-- Start with a hook
-- Be conversational and professional
-- End with a question or CTA
-
-2. VISUALS:
-   - summary_sentence: One powerful sentence (max 15 words) that captures the core message
-   - quote: An inspiring quote related to the topic (max 100 chars)
-   - stats_slides: 4-6 slides, each with a stat/insight and brief context
+2. VISUALS (FOR CAROUSEL):
+   - summary_sentence: A "Title" or "Big Idea" for the first slide (max 12 words).
+   - quote: A powerful, original-sounding quote related to the topic.
+   - stats_slides: 5-8 slides. Each slide MUST have:
+     - stat: A punchy header or key takeaway (max 7 words).
+     - context: 1-2 engaging sentences that explain the takeaway or provide a "how-to".
 
 OUTPUT FORMAT (JSON ONLY):
 {
@@ -140,26 +160,36 @@ OUTPUT FORMAT (JSON ONLY):
       { "index": 1, "stat": "...", "context": "..." }
     ]
   }
-}
-
-Match input language (Hebrew/English).`;
+}`;
 }
 
 function buildPromptForFullPost(text: string): string {
-  return `TASK: Extract visual content from a LinkedIn post.
+  return `TASK: Transform this LinkedIn post into a visual carousel and optimized versions.
+
+STRICT LANGUAGE RULE: The input post is in ${isHebrew(text) ? 'HEBREW' : 'ENGLISH'}. You MUST generate all content in ${isHebrew(text) ? 'HEBREW' : 'ENGLISH'}.
 
 INPUT POST:
 "${text}"
 
-DO NOT rewrite the post. Extract:
+1. THREE POST VERSIONS:
+   - short: A punchy summary of the original post (~50 words).
+   - medium: An optimized version of the original post with better formatting (~120 words).
+   - long: An expanded version of the original post with more depth (~250 words).
 
-1. VISUALS:
-   - summary_sentence: The single most powerful sentence from the post (max 15 words)
-   - quote: A quotable line from the post (max 100 chars)
-   - stats_slides: 4-6 key points/stats from the post, each with context
+2. VISUALS (FOR CAROUSEL):
+   - summary_sentence: A "Title" or "Big Idea" for the first slide (max 12 words).
+   - quote: A powerful quotable line from the post or related to it.
+   - stats_slides: 5-8 slides. Each slide MUST have:
+     - stat: A punchy header or key takeaway (max 7 words).
+     - context: 1-2 engaging sentences that explain the takeaway.
 
 OUTPUT FORMAT (JSON ONLY):
 {
+  "posts": {
+    "short": "...",
+    "medium": "...",
+    "long": "..."
+  },
   "visuals": {
     "summary_sentence": "...",
     "quote": "...",
@@ -167,9 +197,7 @@ OUTPUT FORMAT (JSON ONLY):
       { "index": 1, "stat": "...", "context": "..." }
     ]
   }
-}
-
-Match input language.`;
+}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -193,7 +221,7 @@ async function callOpenAI(userPrompt: string): Promise<unknown> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: SYSTEM_MESSAGE },
           { role: "user", content: userPrompt },
@@ -221,31 +249,6 @@ async function callOpenAI(userPrompt: string): Promise<unknown> {
   } finally {
     clearTimeout(timeoutId);
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Fallback generation
-// ─────────────────────────────────────────────────────────────────────────────
-
-function fallbackVisuals(text: string): Visuals {
-  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
-  return {
-    summary_sentence: sentences[0]?.trim().substring(0, 100) || "Key insight from this post",
-    quote: `"${sentences[0]?.trim().substring(0, 80) || text.substring(0, 80)}..."`,
-    stats_slides: sentences.slice(0, 5).map((s, i) => ({
-      index: i + 1,
-      stat: s.trim().split(" ").slice(0, 5).join(" "),
-      context: s.trim(),
-    })),
-  };
-}
-
-function fallbackPosts(topic: string): PostVersions {
-  return {
-    short: `${topic} is transforming how we work. The key? Understanding its impact on daily decisions. What's your take?`,
-    medium: `I've been thinking about ${topic} lately.\n\nThe importance of ${topic} cannot be overstated in today's landscape. It impacts our daily work in ways we might not immediately recognize.\n\nUnderstanding ${topic} better helps us make more informed decisions. The future holds exciting possibilities.\n\nWhat are your thoughts on ${topic}?`,
-    long: `I've been thinking about ${topic} lately, and I wanted to share some insights.\n\nThe importance of ${topic} cannot be overstated in today's rapidly evolving landscape. As we navigate through unprecedented changes, understanding this concept becomes crucial for sustainable growth and innovation.\n\nHere are key points to consider:\n\n• ${topic} impacts our daily lives in ways we might not immediately recognize\n• Understanding ${topic} better can help us make more informed decisions\n• The future of ${topic} holds exciting possibilities\n\nThe journey of mastering ${topic} is ongoing, and each step brings new opportunities for growth and learning.\n\nWhat are your thoughts on ${topic}? I'd love to hear your perspectives in the comments.`,
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -282,34 +285,18 @@ serve(async (req: Request) => {
       
       const aiResponse = await callOpenAI(prompt) as any;
       
-      if (body.is_idea) {
-        result = {
-          posts: aiResponse.posts || fallbackPosts(body.text),
-          visuals: aiResponse.visuals || fallbackVisuals(body.text),
-          display_post: aiResponse.posts?.medium || body.text,
-        };
-      } else {
-        result = {
-          visuals: aiResponse.visuals || fallbackVisuals(body.text),
-          display_post: body.text,
-        };
+      if (!aiResponse || (!aiResponse.posts && body.is_idea) || !aiResponse.visuals) {
+        throw new Error("AI response was incomplete");
       }
-    } catch (aiError) {
-      console.error("❌ OpenAI failed, using fallback:", aiError);
-      
-      if (body.is_idea) {
-        const posts = fallbackPosts(body.text);
-        result = {
-          posts,
-          visuals: fallbackVisuals(posts.medium),
-          display_post: posts.medium,
-        };
-      } else {
-        result = {
-          visuals: fallbackVisuals(body.text),
-          display_post: body.text,
-        };
-      }
+
+      result = {
+        posts: aiResponse.posts,
+        visuals: aiResponse.visuals,
+        display_post: aiResponse.posts?.medium || (body.is_idea ? body.text : body.text),
+      };
+    } catch (aiError: any) {
+      console.error("❌ OpenAI failed:", aiError);
+      throw new Error(`OpenAI failed to generate content: ${aiError.message || 'Please try again with a clearer topic.'}`);
     }
 
     console.log("✅ Returning result:", {
