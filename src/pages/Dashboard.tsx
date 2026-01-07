@@ -35,6 +35,7 @@ interface Carousel {
   aspect_ratio: "1:1" | "4:5" | string;
   content_type?: "topic_idea" | "full_post" | null;
   post_content?: string | null;
+  is_complete_post?: boolean; // New field to track if user marked post as complete
   text_evolution?: {
     current: 'awareness' | 'discussion' | 'storytelling';
     versions: {
@@ -99,6 +100,7 @@ const welcomeCarousel: Carousel = {
   aspect_ratio: '4:5',
   content_type: 'full_post',
   post_content: 'Welcome to Post24 - Your visual content creation platform for stunning LinkedIn carousels. Create professional carousels with our easy-to-use interface, customize designs, and export high-quality images ready for social media.',
+  is_complete_post: false,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString()
 };
@@ -180,6 +182,7 @@ const Dashboard = () => {
   const [newCarouselText, setNewCarouselText] = useState("");
   const [creatingCarousel, setCreatingCarousel] = useState(false);
   const [creatingCarouselPhase, setCreatingCarouselPhase] = useState("Working on your idea");
+  const [isPostComplete, setIsPostComplete] = useState(false);
   
   // Text expansion state
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
@@ -968,11 +971,11 @@ const handleCreateCarousel = async () => {
     }
 
     setCreatingCarousel(true);
-    setCreatingCarouselPhase("Working on your idea");
+    setCreatingCarouselPhase(isPostComplete ? "Creating visuals from your post" : "Working on your idea");
     
     // Start loading phase progression
     const phaseTimeout1 = setTimeout(() => {
-      setCreatingCarouselPhase("Creating the post");
+      setCreatingCarouselPhase(isPostComplete ? "Designing carousel slides" : "Creating the post");
     }, 1000);
     
     const phaseTimeout2 = setTimeout(() => {
@@ -988,7 +991,13 @@ const handleCreateCarousel = async () => {
       let contentType: "topic_idea" | "full_post";
       let processedText: string;
       
-      if (wordCount < 25) {
+      if (isPostComplete) {
+        // User says post is complete - use as is and only generate visuals
+        contentType = "full_post";
+        processedText = newCarouselText;
+        finalPostContent = newCarouselText;
+        console.log("✅ User marked post as complete - using original text without modifications");
+      } else if (wordCount < 25) {
         // Short text: Use OpenAI to generate a complete post
         contentType = "topic_idea";
         
@@ -1020,13 +1029,14 @@ const handleCreateCarousel = async () => {
         finalPostContent = newCarouselText;
       }
       
-      // Prepare the request
+      // Prepare the request for visuals generation
       const requestBody = {
         text: processedText,
         style: "Professional",
         language,
         content_type: contentType,
         content_purpose: "thought_leadership",
+        generate_visuals_only: isPostComplete, // New flag to skip text generation
       };
       
       const { data, error } = await supabase.functions.invoke("generate-slides", {
@@ -1039,20 +1049,27 @@ const handleCreateCarousel = async () => {
       let essenceSlides: any[];
       essenceSlides = data.slides && data.slides.length > 0 ? data.slides : createEssenceSlidesFromPost(finalPostContent, "Professional");
 
+      const insertData: any = {
+        user_id: user.id,
+        original_text: processedText,
+        slides: essenceSlides,  // These are essence slides
+        chosen_template: "dark",
+        cover_style: "minimalist",
+        carousel_name: essenceSlides[0]?.title || "Untitled Carousel",
+        background_color: "#000000",
+        text_color: "#FFFFFF",
+        accent_color: "#FFFFFF",
+        aspect_ratio: "4:5",
+      };
+      
+      // Only add is_complete_post if the column exists (for backward compatibility)
+      if (isPostComplete) {
+        insertData.is_complete_post = isPostComplete;
+      }
+      
       const { data: carousel, error: insertError } = await supabase
         .from("carousels")
-        .insert({
-          user_id: user.id,
-          original_text: processedText,
-          slides: essenceSlides,  // These are essence slides
-          chosen_template: "dark",
-          cover_style: "minimalist",
-          carousel_name: essenceSlides[0]?.title || "Untitled Carousel",
-          background_color: "#000000",
-          text_color: "#FFFFFF",
-          accent_color: "#FFFFFF",
-          aspect_ratio: "4:5",
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -1074,6 +1091,7 @@ const handleCreateCarousel = async () => {
       await fetchCarousels(user.id);
       setCreateModalOpen(false);
       setNewCarouselText("");
+      setIsPostComplete(false); // Reset checkbox
       
       // Find and select the new carousel with post content
       const updatedCarousels = await supabase
@@ -1095,6 +1113,7 @@ const handleCreateCarousel = async () => {
           slides: parseSlides(firstCarousel.slides),
           content_type: contentType,
           post_content: finalPostContent,  // Use the full post content
+          is_complete_post: isPostComplete, // Include the complete post flag
         });
       }
     } catch (error: any) {
@@ -2007,8 +2026,8 @@ const handleCreateCarousel = async () => {
                           </div>
                         </div>
                         
-                        {/* Text Directional Hints - Only for selected post */}
-                        {isSelected && carousel.post_content && carousel.post_content !== "No post content available." && (
+                        {/* Text Directional Hints - Only for selected post and not complete posts */}
+                        {isSelected && carousel.post_content && carousel.post_content !== "No post content available." && !carousel.is_complete_post && (
                           <div className="px-6 pb-3">
                             <div className="flex justify-between items-center text-sm font-medium">
                               <div 
@@ -2457,12 +2476,34 @@ const handleCreateCarousel = async () => {
               <div className="space-y-6">
                 <div className="relative">
                   <Textarea
-                    placeholder="Start with a rough idea. We'll turn it into a finished post."
+                    placeholder={isPostComplete ? "Paste your complete post here. We'll create visuals without changing the text." : "Start with a rough idea. We'll turn it into a finished post."}
                     value={newCarouselText}
                     onChange={(e) => setNewCarouselText(e.target.value)}
                     className="min-h-[280px] text-lg resize-none bg-background/50 border-border/20 rounded-3xl px-8 py-7 transition-all duration-normal ease-ios-out focus:bg-background/60 focus:border-primary/30 focus:ring-2 focus:ring-primary/5 shadow-inner focus:shadow-lg placeholder:text-muted-foreground/50"
                     disabled={creatingCarousel}
                   />
+                </div>
+                
+                {/* Post Complete Checkbox */}
+                <div className="flex items-start space-x-3">
+                  <input
+                    type="checkbox"
+                    id="post-complete"
+                    checked={isPostComplete}
+                    onChange={(e) => setIsPostComplete(e.target.checked)}
+                    disabled={creatingCarousel}
+                    className="mt-1 h-4 w-4 rounded border-border/60 bg-background/40 text-primary focus:ring-primary/20 focus:ring-offset-0"
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="post-complete" className="text-sm font-medium cursor-pointer hover:text-primary/80 transition-colors">
+                      My post is complete, do not generate
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {isPostComplete 
+                        ? "We'll create visuals from your exact text without modifications."
+                        : "We'll optimize your post and create visuals for it."}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -2479,7 +2520,7 @@ const handleCreateCarousel = async () => {
                       {creatingCarouselPhase}
                     </>
                   ) : (
-                    "Turn this into a post"
+                    isPostComplete ? "Create visuals from this post" : "Turn this into a post"
                   )}
                 </Button>
               </div>

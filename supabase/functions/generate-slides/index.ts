@@ -7,6 +7,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 interface RequestBody {
   text: string;
   is_idea: boolean; // true if < 25 words, false if full post
+  generate_visuals_only?: boolean; // new flag for complete posts
 }
 
 interface PostVersions {
@@ -31,6 +32,7 @@ interface ResponseData {
   posts?: PostVersions;
   visuals: Visuals;
   display_post: string; // The post to display (medium version or original)
+  original_post?: string; // The original post when generate_visuals_only is true
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,6 +117,7 @@ async function parseRequest(req: Request): Promise<RequestBody> {
   return {
     text,
     is_idea: body.is_idea ?? wordCount < 25,
+    generate_visuals_only: body.generate_visuals_only ?? false,
   };
 }
 
@@ -128,6 +131,37 @@ function validateRequest(body: RequestBody): string | null {
 // ─────────────────────────────────────────────────────────────────────────────
 // Prompt builders
 // ─────────────────────────────────────────────────────────────────────────────
+
+function buildPromptForVisualsOnly(text: string): string {
+  return `TASK: Create visual carousel content from this complete post. DO NOT modify or rewrite the post text.
+
+STRICT LANGUAGE RULE: The input post is in ${isHebrew(text) ? 'HEBREW' : 'ENGLISH'}. You MUST generate all visual content in ${isHebrew(text) ? 'HEBREW' : 'ENGLISH'}.
+
+INPUT POST (DO NOT CHANGE):
+"${text}"
+
+Create ONLY the visual components for a carousel based on this post:
+
+1. VISUALS (FOR CAROUSEL):
+   - summary_sentence: A "Title" or "Big Idea" for the first slide (max 12 words).
+   - quote: A powerful quotable line extracted from or inspired by the post.
+   - stats_slides: 5-8 slides. Each slide MUST have:
+     - stat: A punchy header or key takeaway (max 7 words).
+     - context: 1-2 engaging sentences that explain the takeaway or provide a "how-to".
+
+IMPORTANT: Do NOT generate post versions. The post is already complete and should not be modified.
+
+OUTPUT FORMAT (JSON ONLY):
+{
+  "visuals": {
+    "summary_sentence": "...",
+    "quote": "...",
+    "stats_slides": [
+      { "index": 1, "stat": "...", "context": "..." }
+    ]
+  }
+}`;
+}
 
 function buildPromptForIdea(text: string): string {
   return `TASK: Create premium LinkedIn content from this idea/topic: "${text}"
@@ -279,21 +313,41 @@ serve(async (req: Request) => {
     let result: ResponseData;
 
     try {
-      const prompt = body.is_idea 
-        ? buildPromptForIdea(body.text)
-        : buildPromptForFullPost(body.text);
+      let prompt: string;
+      let aiResponse: any;
       
-      const aiResponse = await callOpenAI(prompt) as any;
-      
-      if (!aiResponse || (!aiResponse.posts && body.is_idea) || !aiResponse.visuals) {
-        throw new Error("AI response was incomplete");
-      }
+      if (body.generate_visuals_only) {
+        // Only generate visuals, no post modifications
+        prompt = buildPromptForVisualsOnly(body.text);
+        aiResponse = await callOpenAI(prompt);
+        
+        if (!aiResponse || !aiResponse.visuals) {
+          throw new Error("AI response was incomplete for visuals-only generation");
+        }
+        
+        result = {
+          visuals: aiResponse.visuals,
+          display_post: body.text, // Use original post as-is
+          original_post: body.text, // Preserve original for reference
+        };
+      } else {
+        // Regular generation with post optimization
+        prompt = body.is_idea 
+          ? buildPromptForIdea(body.text)
+          : buildPromptForFullPost(body.text);
+        
+        aiResponse = await callOpenAI(prompt);
+        
+        if (!aiResponse || (!aiResponse.posts && body.is_idea) || !aiResponse.visuals) {
+          throw new Error("AI response was incomplete");
+        }
 
-      result = {
-        posts: aiResponse.posts,
-        visuals: aiResponse.visuals,
-        display_post: aiResponse.posts?.medium || (body.is_idea ? body.text : body.text),
-      };
+        result = {
+          posts: aiResponse.posts,
+          visuals: aiResponse.visuals,
+          display_post: aiResponse.posts?.medium || (body.is_idea ? body.text : body.text),
+        };
+      }
     } catch (aiError: any) {
       console.error("❌ OpenAI failed:", aiError);
       throw new Error(`OpenAI failed to generate content: ${aiError.message || 'Please try again with a clearer topic.'}`);
@@ -303,6 +357,7 @@ serve(async (req: Request) => {
       hasPosts: !!result.posts,
       displayPostLength: result.display_post.length,
       statsCount: result.visuals.stats_slides.length,
+      generateVisualsOnly: body.generate_visuals_only,
     });
 
     return new Response(JSON.stringify(result), { headers });

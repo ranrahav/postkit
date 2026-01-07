@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ interface Post {
   posts?: PostVersions;
   current_version: 'short' | 'medium' | 'long' | 'original';
   visuals: Visuals;
+  is_complete_post?: boolean; // Add this field
   created_at: string;
   updated_at: string;
 }
@@ -75,6 +76,8 @@ const Dashboard = () => {
   // Input state
   const [inputText, setInputText] = useState("");
   const [creating, setCreating] = useState(false);
+  const [isPostComplete, setIsPostComplete] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Visual navigation state per post
   const [visualTypes, setVisualTypes] = useState<Record<string, VisualType>>({});
@@ -84,6 +87,20 @@ const Dashboard = () => {
   
   // Search
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Auto-resize textarea function
+  const resizeTextarea = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`; // Max height of 300px
+    }
+  };
+
+  // Resize textarea when input text changes
+  useEffect(() => {
+    resizeTextarea();
+  }, [inputText]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Auth & Data Loading
@@ -157,6 +174,7 @@ const Dashboard = () => {
           posts,
           current_version: 'medium' as const,
           visuals,
+          is_complete_post: item.is_complete_post || false, // Include the complete post flag
           created_at: item.created_at,
           updated_at: item.updated_at,
         };
@@ -213,9 +231,14 @@ const Dashboard = () => {
     setCreating(true);
     
     try {
-      // Call the simplified edge function
+      // Call the edge function with or without text generation based on checkbox
+      const requestBody = {
+        text: inputText,
+        generate_visuals_only: isPostComplete, // New flag to skip text generation
+      };
+      
       const { data, error } = await supabase.functions.invoke("generate-slides", {
-        body: { text: inputText },
+        body: requestBody,
       });
 
       if (error) {
@@ -229,22 +252,29 @@ const Dashboard = () => {
       }
 
       // Save to database
+      const insertData: any = {
+        user_id: user.id,
+        original_text: inputText,
+        carousel_name: data.visuals?.summary_sentence || inputText.substring(0, 50),
+        slides: JSON.stringify(data.visuals?.stats_slides || []),
+        posts: data.posts ? JSON.stringify(data.posts) : null,
+        visuals: data.visuals ? JSON.stringify(data.visuals) : null,
+        chosen_template: "dark",
+        cover_style: "minimalist",
+        background_color: "#000000",
+        text_color: "#FFFFFF",
+        accent_color: "#FFFFFF",
+        aspect_ratio: "4:5",
+      };
+      
+      // Only add is_complete_post if the column exists (for backward compatibility)
+      if (isPostComplete) {
+        insertData.is_complete_post = isPostComplete;
+      }
+      
       const { data: newPost, error: insertError } = await supabase
         .from("carousels")
-        .insert({
-          user_id: user.id,
-          original_text: inputText,
-          carousel_name: data.visuals?.summary_sentence || inputText.substring(0, 50),
-          slides: JSON.stringify(data.visuals?.stats_slides || []),
-          posts: data.posts ? JSON.stringify(data.posts) : null,
-          visuals: data.visuals ? JSON.stringify(data.visuals) : null,
-          chosen_template: "dark",
-          cover_style: "minimalist",
-          background_color: "#000000",
-          text_color: "#FFFFFF",
-          accent_color: "#FFFFFF",
-          aspect_ratio: "4:5",
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -263,10 +293,11 @@ const Dashboard = () => {
         id: newPost.id,
         user_id: newPost.user_id,
         input_text: inputText,
-        is_idea: inputText.split(/\s+/).length < 25,
-        posts: data.posts,
+        is_idea: !isPostComplete && inputText.split(/\s+/).length < 25, // Don't mark as idea if complete post
+        posts: isPostComplete ? undefined : data.posts, // Don't store AI-generated posts for complete posts
         current_version: 'medium',
         visuals: data.visuals,
+        is_complete_post: isPostComplete, // Store the complete post flag
         created_at: newPost.created_at,
         updated_at: newPost.updated_at,
       };
@@ -274,6 +305,12 @@ const Dashboard = () => {
       setPosts([post, ...posts]);
       setSelectedPost(post);
       setInputText("");
+      setIsPostComplete(false); // Reset checkbox
+      
+      // Reset textarea height
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
       
       toast({ title: "Post created!" });
     } catch (error: any) {
@@ -337,6 +374,11 @@ const Dashboard = () => {
   };
 
   const getDisplayText = (post: Post): string => {
+    // For complete posts, always return the original input text
+    if (post.is_complete_post) {
+      return post.input_text;
+    }
+    // For other posts, use the AI-generated versions if available
     if (!post.posts) return post.input_text;
     return post.posts[post.current_version as keyof PostVersions] || post.input_text;
   };
@@ -658,21 +700,42 @@ const Dashboard = () => {
               <div className="space-y-4">
             {/* Input Box */}
             <Card className="p-6">
-              <div className="relative">
-                <Textarea
-                  placeholder="Start with an idea or paste a full post..."
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  className="min-h-[80px] resize-none border-gray-200 text-base leading-relaxed pr-14"
-                  disabled={creating}
-                />
-                <Button
-                  onClick={handleCreate}
-                  disabled={creating || !inputText.trim()}
-                  className="absolute bottom-3 right-3 h-8 w-8 rounded-full bg-gray-900 hover:bg-gray-800 p-0 flex items-center justify-center"
-                >
-                  {creating ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <span className="text-white text-sm font-medium">→</span>}
-                </Button>
+              <div className="space-y-4">
+                <div className="relative">
+                  <Textarea
+                    ref={textareaRef}
+                    placeholder={isPostComplete ? "Paste your complete post here. We'll create visuals without changing the text." : "Share a post topic or paste a full post"}
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    className="resize-none border-gray-200 text-base leading-relaxed pr-14 min-h-[80px]"
+                    style={{ height: 'auto' }}
+                    disabled={creating}
+                  />
+                  <Button
+                    onClick={handleCreate}
+                    disabled={creating || !inputText.trim()}
+                    className="absolute bottom-3 right-3 h-8 w-8 rounded-full bg-gray-900 hover:bg-gray-800 p-0 flex items-center justify-center"
+                  >
+                    {creating ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <span className="text-white text-sm font-medium">→</span>}
+                  </Button>
+                </div>
+                
+                {/* Post Complete Checkbox */}
+                <div className="flex items-start space-x-3">
+                  <input
+                    type="checkbox"
+                    id="post-complete-simplified"
+                    checked={isPostComplete}
+                    onChange={(e) => setIsPostComplete(e.target.checked)}
+                    disabled={creating}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                  />
+                  <div className="space-y-1">
+                    <label htmlFor="post-complete-simplified" className="text-sm font-medium text-gray-700 cursor-pointer hover:text-gray-900 transition-colors">
+                      Generate visuals only, post copy is final
+                    </label>
+                  </div>
+                </div>
               </div>
             </Card>
 
@@ -713,8 +776,11 @@ const Dashboard = () => {
                       {getDisplayText(post)}
                     </p>
                     
-                    {/* Version Controls - show for selected posts with versions OR for all ideas */}
-                    {isSelected && (post.posts || post.is_idea) && (
+                    {/* Add line space after post text */}
+                    <div className="h-4"></div>
+                    
+                    {/* Version Controls - show for selected posts with versions OR for all ideas, but NOT for complete posts */}
+                    {isSelected && !post.is_complete_post && (post.posts || post.is_idea) && (
                       <div className="flex justify-between mt-4 mb-4">
                         {post.current_version !== 'short' ? (
                           <button
